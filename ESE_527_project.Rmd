@@ -1,0 +1,84 @@
+---
+title: "Save the World!"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+sus_eng = read.csv("Sustainable_Energy_For_All_Data.csv")
+esg_data = readxl::read_excel("Countries_Environment_Social_and_Governance_(ESG)_Data.xlsx")
+# above data last updated Feb. 9th 2023
+
+esg_data = data.frame(esg_data)
+head(esg_data, 20)
+sue_data = readxl::read_excel("Sustainable_Energy_for_All.xlsx", col_names = c("Country.Name", "Country.code", "Time", "Time.code", "ACCESS.CFT.TOT", "ACCESS.ELECTRICITY.RURAL", "ACCESS.ELECTRICITY.TOT", "ACCESS.ELECTRICITY.URBAN", "PRIMARY.ENERGY.INTENSITY", "REN.ELECTRICITY.OUTPUT", "SHARE.RE.IN.ELECTRICITY", "RE.CONSUMPTION", "SHARE.TOTAL.RE.IN.TFEC", "TOTAL.ELECTRICITY.OUTPUT", "TOTAL.FINAL.ENERGY.CONSUM]"), col_types = c("text", "text", "numeric", "text", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric"))
+head(sue_data)
+sefa_data = data.frame(sue_data)
+sefa = sefa_data[2:6999,]
+head(sefa)
+perc = !is.na(sefa$SHARE.RE.IN.ELECTRICITY)
+
+```
+```{r}
+print(sefa[perc,])
+nonna = sefa[perc,]
+Y = data.frame(nonna$Country.Name, nonna$Time, nonna$SHARE.RE.IN.ELECTRICITY)
+Y
+```
+
+break into continents or developed/
+### Divide countries into regions
+This will help in outlier detection as countries in similar regions would have more similar baselines.
+
+The World Bank separates countries into 7 regions.
+South Asia
+Europe and Central Asia
+Middle East and North Africa
+East Asia and Pacific
+Sub-Saharan Africa
+Latin America and Caribbean
+North America
+
+```{r}
+north_america_y = Y$nonna.Country.Name == "United States"|Y$nonna.Country.Name == "Canada"|Y$nonna.Country.Name == "Bermuda"
+north_america_y = Y[north_america_y,]
+north_america_y
+```
+```{r}
+ggplot(north_america_y, aes(x=nonna.Time, y = nonna.SHARE.RE.IN.ELECTRICITY, color = nonna.Country.Name))+
+  geom_line()
+```
+
+```{r}
+south_asia_y = Y$nonna.Country.Name == "Afghanistan"|Y$nonna.Country.Name == "Bangladesh"|Y$nonna.Country.Name == "Bhutan"|Y$nonna.Country.Name == "Pakistan"|Y$nonna.Country.Name == "Nepal"|Y$nonna.Country.Name == "India"|Y$nonna.Country.Name == "Sri Lanka"|Y$nonna.Country.Name == "Maldives"
+south_asia_y = Y[south_asia_y,]
+south_asia_y
+```
+
+
+```{r}
+ggplot(south_asia_y, aes(x=nonna.Time, y = nonna.SHARE.RE.IN.ELECTRICITY, color = nonna.Country.Name))+
+  geom_line()
+```
+
+
+```{r}
+library(ggplot2)
+sub_saharan = esg_data$Country.Name == "Angola"|esg_data$Country.Name =="Benin"|esg_data$Country.Name =="Botswana"|esg_data$Country.Name == "Burkina Faso"|esg_data$Country.Name == "Burundi"|esg_data$Country.Name == "Cameroon"|esg_data$Country.Name == "Cape Verde"|esg_data$Country.Name == "Zambia"|esg_data$Country.Name == "Tanzania"|esg_data$Country.Name == "Uganda"|esg_data$Country.Name == "Togo"|esg_data$Country.Name == "Eswatini"|esg_data$Country.Name == "Sudan"|esg_data$Country.Name == "Zimbabwe"|esg_data$Country.Name == "South Africa"| esg_data$Country.Name == "Somalia"|esg_data$Country.Name == "Sierra Leone"|esg_data$Country.Name == "Senegal"|esg_data$Country.Name == "Rwanda"|esg_data$Country.Name =="Guinea-Bissau"|esg_data$Country.Name == "Nigeria"|esg_data$Country.Name == "Niger"|esg_data$Country.Name == "Namibia"|esg_data$Country.Name == "Mozambique"|esg_data$Country.Name == "Mauritania"|esg_data$Country.Name == "Mali"|esg_data$Country.Name == "Malawi"|esg_data$Country.Name == "Madagascar"|esg_data$Country.Name == "Liberia"|esg_data$Country.Name == "Lesotho"|esg_data$Country.Name == "Kenya"|esg_data$Country.Name == "Cote d'Ivoire"|esg_data$Country.Name == "Guinea"|esg_data$Country.Name == "Ghana"|esg_data$Country.Name == "Gambia"|esg_data$Country.Name == "Gabon"|esg_data$Country.Name == "Eritrea"|esg_data$Country.Name == "Ethiopia"|esg_data$Country.Name == "Equatorial Guinea"|esg_data$Country.Name == "Democratic Republic of Congo"|esg_data$Country.Name == "Congo"|esg_data$Country.Name == "Comoros"|esg_data$Country.Name == "Chad"|esg_data$Country.Name == "Central African Republic"|esg_data$Country.Name == "Mauritius"|esg_data$Country.Name == "Sao Tome and Principe"|esg_data$Country.Name == "Seychelles"|esg_data$Country.Name == "South Sudan"
+temp = esg_data[sub_saharan,]
+print(unique(temp$Country.Name))
+head(temp)
+class(temp)
+temp2 = temp[2:28,]
+temp["Time"]
+share = temp["SHARE.RE.IN.ELECTRICITY"]
+plot(temp2[,"Time"], temp2[,"SHARE.RE.IN.ELECTRICITY"])
+
+
+```
+
+
+Model: Regression in Time Series
