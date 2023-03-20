@@ -1,0 +1,116 @@
+---
+title: "Mid-Semester Report"
+author: "Hannah Possehl and Gus Christensen"
+date: "2023-03-20"
+output: powerpoint_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Introduction
+- We are impacting a country's decisions on renewable energy.
+- Increasing renewable energy production can reduce the negative impacts of non-renewable energy production.
+- Renewable energy is an important piece of sustainability.
+
+
+
+## Data Summary
+- World Bank, including data from the UN initiative Sustainable Energy for All and the Environment Social and Governance(ESG) Data.
+- Sustainable Energy for All: 197 countries, 11 variables, 1990-2015
+- Environment Social and Governance Data: 197 countries, 71 Variables, 1960-2022
+- All numeric variables except Country Name
+
+```{r}
+
+```
+
+## Region Breakdown
+- South Asia
+- Europe and Central Asia
+- Middle East and North Africa
+- East Asia and Pacific
+- Sub-Saharan Africa
+- Latin America and Caribbean
+- North America
+
+## Data Preprocessing
+
+```{r cars, echo = FALSE, include=FALSE}
+esg_data = readxl::read_excel("Countries_Environment_Social_and_Governance_(ESG)_Data.xlsx")
+# above data last updated Feb. 9th 2023
+
+esg_data = data.frame(esg_data)
+sue_data = readxl::read_excel("Sustainable_Energy_for_All.xlsx", col_names = c("Country.Name", "Country.code", "Time", "Time.code", "ACCESS.CFT.TOT", "ACCESS.ELECTRICITY.RURAL", "ACCESS.ELECTRICITY.TOT", "ACCESS.ELECTRICITY.URBAN", "PRIMARY.ENERGY.INTENSITY", "REN.ELECTRICITY.OUTPUT", "SHARE.RE.IN.ELECTRICITY", "RE.CONSUMPTION", "SHARE.TOTAL.RE.IN.TFEC", "TOTAL.ELECTRICITY.OUTPUT", "TOTAL.FINAL.ENERGY.CONSUM]"), col_types = c("text", "text", "numeric", "text", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric"))
+sefa_data = data.frame(sue_data)
+sefa = sefa_data[2:6999,]
+perc = !is.na(sefa$SHARE.RE.IN.ELECTRICITY)
+nonna = sefa[perc,]
+Y = data.frame(nonna$Country.Name, nonna$Time, nonna$SHARE.RE.IN.ELECTRICITY)
+```
+
+```{r, echo = FALSE, include=FALSE}
+north_america_y = Y$nonna.Country.Name == "United States"|Y$nonna.Country.Name == "Canada"|Y$nonna.Country.Name == "Bermuda"
+north_america_y = Y[north_america_y,]
+south_asia_y = Y$nonna.Country.Name == "Afghanistan"|Y$nonna.Country.Name == "Bangladesh"|Y$nonna.Country.Name == "Bhutan"|Y$nonna.Country.Name == "Pakistan"|Y$nonna.Country.Name == "Nepal"|Y$nonna.Country.Name == "India"|Y$nonna.Country.Name == "Sri Lanka"|Y$nonna.Country.Name == "Maldives"
+south_asia_y = Y[south_asia_y,]
+```
+
+```{r, warning =FALSE, echo = FALSE}
+library(ggplot2)
+ggplot(north_america_y, aes(x=nonna.Time, y = nonna.SHARE.RE.IN.ELECTRICITY))+
+  geom_line(aes(linetype = nonna.Country.Name))+
+  labs(x="Year",y="% renewable energy of total energy production", title="Target Variable for North American Region")
+```
+
+## South Asia
+
+```{r, warning =FALSE, echo = FALSE}
+ggplot(south_asia_y, aes(x=nonna.Time, y = nonna.SHARE.RE.IN.ELECTRICITY))+
+  geom_line(aes(linetype = nonna.Country.Name))+
+  labs(x="Year",y="% renewable energy of total energy production", title="Target Variable for South Asia Region")
+```
+
+## Outliers
+```{r, warning = FALSE}
+elec_access = esg_data[esg_data$Series.Name == "Access to clean fuels and technologies for cooking (% of population)",]
+hist(as.numeric(elec_access$X2014..YR2014.), col = "red", main = "Histogram of Access to clean fuels for cooking for 2014 and 2015", xlab = "Access to clean fuels and technologies for cooking (% of population)", ylab = "Frequency")
+hist(as.numeric(elec_access$X2015..YR2015.), add=T, col = "blue")
+legend("topleft", c("2014", "2015"), col = c("red", "blue"), lwd = 10)
+
+```
+
+## Other Data
+
+```{r, warning =FALSE, echo = FALSE}
+north_america = nonna$Country.Name == "United States"|nonna$Country.Name == "Canada"|nonna$Country.Name == "Bermuda"
+north_america = nonna[north_america,]
+ggplot(north_america, aes(x=Time, y = ACCESS.ELECTRICITY.TOT))+
+  geom_line(aes(linetype = Country.Name))+
+  labs(x="Year",y="% of total population with access to electricity", title="Total electricity access for North America Region")
+```
+
+## South Asia
+
+```{r, warning =FALSE, echo = FALSE}
+south_asia = nonna$Country.Name == "Afghanistan"|nonna$Country.Name == "Bangladesh"|nonna$Country.Name == "Bhutan"|nonna$Country.Name == "Pakistan"|nonna$Country.Name == "Nepal"|nonna$Country.Name == "India"|nonna$Country.Name == "Sri Lanka"|nonna$Country.Name == "Maldives"
+south_asia = nonna[south_asia,]
+ggplot(south_asia, aes(x=Time, y = ACCESS.ELECTRICITY.TOT))+
+  geom_line(aes(linetype = Country.Name))+
+  labs(x="Year",y="% of total population with access to electricity", title="Total electricity access for South Asia Region")
+```
+
+## Model
+- Model: Linear regression for time series to predict based on year or country
+- Validation/Testing: Use last five years or subset of countries
+- Error measure: Mean Squared Error(MSE)
+
+## Timeline
+- Look at standardization of variables by March 24th
+- Create first linear regression model by no later than March 31st
+- Find error/accuracy in the model by no later than April 7th
+- Fix/improve model by April 10th
+- Find extrapolation of 2035 and 2050, offering prescriptive analytics on how to attain the value found by April 14th or ¾ semester report
+- Look into funding towards renewable energy after ¾ semester report
+
