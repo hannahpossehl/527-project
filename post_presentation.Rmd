@@ -1,0 +1,149 @@
+---
+title: "Post mid semester"
+author: "Hannah Possehl and Gus Christensen"
+date: "2023-03-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars, echo = FALSE}
+esg_data = readxl::read_excel("C:/Users/hanna/OneDrive/Documents/R/Countries_Environment_Social_and_Governance_(ESG)_Data.xlsx", na = "..")
+# above data last updated Feb. 9th 2023
+cor_years = esg_data[,c(1,3,12:37)]
+rev = cor_years[, c(1,2,ncol(cor_years):3)]
+head(rev)
+colnames(rev) = c("Country.Name", "Category", "1990", "1991", "1992", "1993", "1994", "1995", "1996", "1997", "1998", "1999", "2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015")
+head(rev)
+regressors = rev
+```
+
+
+```{r, include = FALSE}
+esg_data = data.frame(esg_data)
+sue_data = readxl::read_excel("C:/Users/hanna/OneDrive/Documents/R/Sustainable_Energy_for_All.xlsx", col_names = c("Country.Name", "Country.code", "Time", "Time.code", "ACCESS.CFT.TOT", "ACCESS.ELECTRICITY.RURAL", "ACCESS.ELECTRICITY.TOT", "ACCESS.ELECTRICITY.URBAN", "PRIMARY.ENERGY.INTENSITY", "REN.ELECTRICITY.OUTPUT", "SHARE.RE.IN.ELECTRICITY", "RE.CONSUMPTION", "SHARE.TOTAL.RE.IN.TFEC", "TOTAL.ELECTRICITY.OUTPUT", "TOTAL.FINAL.ENERGY.CONSUM]"), col_types = c("text", "text", "numeric", "text", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric"))
+sefa_data = data.frame(sue_data)
+sefa = sefa_data[2:6999,]
+perc = !is.na(sefa$SHARE.RE.IN.ELECTRICITY)
+nonna = sefa[perc,]
+Y = data.frame(nonna$Country.Name, nonna$Time, nonna$SHARE.RE.IN.ELECTRICITY)
+#temp = tibble::rownames_to_column(nonna, "Time")
+#head(temp)
+```
+
+```{r}
+library(reshape)
+library(reshape2)
+head(nonna)
+colnames(nonna)
+cast_data = melt(nonna[,c(1,3,5:15)], id = c("Country.Name", "Time"), variable.name="Category")
+head(cast_data)
+```
+
+```{r}
+c_data = dcast(cast_data,Country.Name+Category ~ Time, value.var = "value")
+head(c_data)
+```
+```{r}
+regressors_join = rbind(regressors, c_data)
+head(regressors_join)
+tail(regressors_join)
+```
+
+```{r}
+sum(is.na(regressors_join$'1990'))
+sum(is.na(regressors_join$'1991'))
+sum(is.na(regressors_join$'1992'))
+sum(is.na(regressors_join$'1993'))
+sum(is.na(regressors_join$'1994'))
+sum(is.na(regressors_join$'1995'))
+sum(is.na(regressors_join$'1996'))
+sum(is.na(regressors_join$'1997'))
+sum(is.na(regressors_join$'1998'))
+sum(is.na(regressors_join$'1999'))
+sum(is.na(regressors_join$'2000'))
+sum(is.na(regressors_join$'2001'))
+sum(is.na(regressors_join$'2002'))
+sum(is.na(regressors_join$'2003'))
+sum(is.na(regressors_join$'2004'))
+sum(is.na(regressors_join$'2005'))
+sum(is.na(regressors_join$'2006'))
+sum(is.na(regressors_join$'2007'))
+sum(is.na(regressors_join$'2008'))
+sum(is.na(regressors_join$'2009'))
+sum(is.na(regressors_join$'2010'))
+sum(is.na(regressors_join$'2011'))
+sum(is.na(regressors_join$'2012'))
+sum(is.na(regressors_join$'2013'))
+sum(is.na(regressors_join$'2014'))
+sum(is.na(regressors_join$'2015'))
+```
+```{r}
+library(dplyr)
+rowsums = rowSums(is.na(regressors_join))
+#rowsums[rowsums>=10]
+empty_rows = which(rowsums==26)
+empty_rows
+sum(is.na(regressors_join))
+ empty_data = regressors_join[empty_rows,]
+regressors_join[empty_rows,]
+n_distinct(regressors_join[empty_rows,]$Category)
+unique(regressors_join[empty_rows,]$Category)
+n_distinct(regressors_join[empty_rows,]$Country.Name)
+unique(regressors_join[empty_rows,]$Country.Name)
+```
+```{r}
+regressors_join[empty_rows,] %>%
+  group_by(Country.Name) %>% 
+  summarize(num_Cat = n_distinct(regressors_join[empty_rows,]$Category))
+```
+
+```{r}
+library(tidyr)
+
+as.data.frame(table(empty_data$Country.Name))
+as.data.frame(table(empty_data$Category))
+```
+
+```{r pressure, echo=FALSE}
+library(summarytools)
+class(regressors_join$'1990')= "Numeric"
+class(regressors_join$'1991')= "Numeric"
+class(regressors_join$'1992')= "Numeric"
+class(regressors_join$'1993')= "Numeric"
+class(regressors_join$'1994')= "Numeric"
+class(regressors_join$'1995')= "Numeric"
+class(regressors_join$'1996')= "Numeric"
+class(regressors_join$'1997')= "Numeric"
+class(regressors_join$'1998')= "Numeric"
+class(regressors_join$'1999')= "Numeric"
+class(regressors_join$'2000')= "Numeric"
+class(regressors_join$'2001')= "Numeric"
+class(regressors_join$'2002')= "Numeric"
+class(regressors_join$'2003')= "Numeric"
+class(regressors_join$'2004')= "Numeric"
+class(regressors_join$'2005')= "Numeric"
+class(regressors_join$'2006')= "Numeric"
+class(regressors_join$'2007')= "Numeric"
+class(regressors_join$'2008')= "Numeric"
+class(regressors_join$'2009')= "Numeric"
+class(regressors_join$'2010')= "Numeric"
+class(regressors_join$'2011')= "Numeric"
+class(regressors_join$'2012')= "Numeric"
+class(regressors_join$'2013')= "Numeric"
+class(regressors_join$'2014')= "Numeric"
+class(regressors_join$'2015')= "Numeric"
+
+
+descr(regressors_join[,3:28])
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
