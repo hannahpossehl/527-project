@@ -151,6 +151,118 @@ ggplot(gdp_pop, aes(X2005,X2005.1)) +
   geom_point()
 ```
 
+###Plot for 2005
+```{r}
+library(ggplot2)
+gdp_pop_data <- readxl::read_excel("gdp_pop_data.xlsx", col_types = c("text", "text", "text", "text", "numeric", "numeric", "numeric"))
+colnames(gdp_pop_data) <- c("Country.Name", "Country.Code", "Series.Name", "Series.Code", "2005", "2010", "2015")
+head(gdp_pop_data)
+gdp_2005 = gdp_pop_data[gdp_pop_data$Series.Name == "GDP (current US$)",'2005']
+pop_2005 = gdp_pop_data[gdp_pop_data$Series.Name == "Population, total",'2005']
+# print(gdp[1:193,])
+# print(pop[1:193,])
+gdp_data_2005 = gdp_2005[1:193,]
+pop_data_2005 = pop_2005[1:193,]
+gdp_pop_2005 = data.frame(gdp_data_2005, pop_data_2005)
+
+# head(gdp_pop)
+#plot(gdp_data[,'2005'],pop_data[,'2005'])
+
+
+
+#Divided by Mean Standardization
+gdp_pop_2005$X2005 <- gdp_pop_2005$X2005 / mean(gdp_pop_2005$X2005, na.rm = TRUE)
+gdp_pop_2005$X2005.1 <- gdp_pop_2005$X2005.1 / mean(gdp_pop_2005$X2005.1, na.rm = TRUE)
+#Plot of dividing by mean
+ggplot(gdp_pop_2005, aes(X2005,X2005.1)) +
+  geom_point() +
+  ggtitle("Population v. GDP (2005)") +
+  xlab("Population")+
+  ylab("GDP")
+
+#Standardizing with mean = 0 and sd = 1
+gdp_pop_2005_s <- gdp_pop_2005 %>% mutate_at(c('X2005', 'X2005.1'), ~(scale(.) %>% as.vector))
+ggplot(gdp_pop_2005_s, aes(X2005,X2005.1)) +
+  geom_point() +
+  ggtitle("Population v. GDP (2005)") +
+  xlab("Population")+
+  ylab("GDP")
+
+```
+
+###Plot for 2010
+```{r}
+library(ggplot2)
+gdp_pop_data <- readxl::read_excel("gdp_pop_data.xlsx", col_types = c("text", "text", "text", "text", "numeric", "numeric", "numeric"))
+colnames(gdp_pop_data) <- c("Country.Name", "Country.Code", "Series.Name", "Series.Code", "2005", "2010", "2015")
+head(gdp_pop_data)
+gdp_2010 = gdp_pop_data[gdp_pop_data$Series.Name == "GDP (current US$)",'2010']
+pop_2010 = gdp_pop_data[gdp_pop_data$Series.Name == "Population, total",'2010']
+# print(gdp[1:193,])
+# print(pop[1:193,])
+gdp_data_2010 = gdp_2010[1:193,]
+pop_data_2010 = pop_2010[1:193,]
+gdp_pop_2010 = data.frame(gdp_data_2010, pop_data_2010)
+
+# head(gdp_pop)
+#plot(gdp_data[,'2005'],pop_data[,'2005'])
+
+#Standardizing by dividing by mean
+gdp_pop_2010$X2010 <- gdp_pop_2010$X2010 / mean(gdp_pop_2010$X2010, na.rm = TRUE)
+gdp_pop_2010$X2010.1 <- gdp_pop_2010$X2010.1 / mean(gdp_pop_2010$X2010.1, na.rm = TRUE)
+#Plot
+ggplot(gdp_pop_2010, aes(X2010,X2010.1)) +
+  geom_point() +
+  ggtitle("Population v. GDP (2010)") +
+  xlab("Population")+
+  ylab("GDP")
+
+
+#Standardizing with mean = 0 and sd = 1
+gdp_pop_2010_s <- gdp_pop_2010 %>% mutate_at(c('X2010', 'X2010.1'), ~(scale(.) %>% as.vector))
+ggplot(gdp_pop_2010_s, aes(X2010,X2010.1)) +
+  geom_point() +
+  ggtitle("Population v. GDP (2010)") +
+  xlab("Population")+
+  ylab("GDP")
+```
+
+###Plot for 2015
+```{r}
+library(ggplot2)
+gdp_pop_data <- readxl::read_excel("gdp_pop_data.xlsx", col_types = c("text", "text", "text", "text", "numeric", "numeric", "numeric"))
+colnames(gdp_pop_data) <- c("Country.Name", "Country.Code", "Series.Name", "Series.Code", "2005", "2010", "2015")
+head(gdp_pop_data)
+gdp_2015 = gdp_pop_data[gdp_pop_data$Series.Name == "GDP (current US$)",'2015']
+pop_2015 = gdp_pop_data[gdp_pop_data$Series.Name == "Population, total",'2015']
+# print(gdp[1:193,])
+# print(pop[1:193,])
+gdp_data_2015 = gdp_2015[1:193,]
+pop_data_2015 = pop_2015[1:193,]
+gdp_pop_2015 = data.frame(gdp_data_2015, pop_data_2015)
+# head(gdp_pop)
+#plot(gdp_data[,'2005'],pop_data[,'2005'])
+
+
+#Standardizing by dividing by mean
+gdp_pop_2015$X2015 <- gdp_pop_2015$X2015 / mean(gdp_pop_2015$X2015, na.rm = TRUE)
+gdp_pop_2015$X2015.1 <- gdp_pop_2015$X2015.1 / mean(gdp_pop_2015$X2015.1, na.rm = TRUE)
+#Plot
+ggplot(gdp_pop_2015, aes(X2015,X2015.1)) +
+  geom_point() +
+  ggtitle("Population v. GDP (2015)") +
+  xlab("Population")+
+  ylab("GDP")
+
+#Standardizing with mean = 0 and sd = 1
+gdp_pop_2015_s <- gdp_pop_2015 %>% mutate_at(c('X2015', 'X2015.1'), ~(scale(.) %>% as.vector))
+ggplot(gdp_pop_2015_s, aes(X2015,X2015.1)) +
+  geom_point() +
+  ggtitle("Population v. GDP (2015)") +
+  xlab("Population")+
+  ylab("GDP")
+```
+
 ## Model
 - Model: Linear regression for time series to predict based on year or country
 - Validation/Testing: Use last five years or subset of countries
