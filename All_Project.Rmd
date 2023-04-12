@@ -133,7 +133,23 @@ colnames(gdp_pop_data) <- c("Country.Name", "Country.Code", "Series.Name", "Seri
 ggplot(gdp_pop_data, aes(x = Series.Name["GDP(Current US$)"], y = Series.Name["Population, total"])) +
   geom_point(color = "Country.Name")
 ```
-
+```{r}
+library(ggplot2)
+gdp_pop_data <- readxl::read_excel("gdp_pop_data.xlsx", col_types = c("text", "text", "text", "text", "numeric", "numeric", "numeric"))
+colnames(gdp_pop_data) <- c("Country.Name", "Country.Code", "Series.Name", "Series.Code", "2005", "2010", "2015")
+head(gdp_pop_data)
+gdp = gdp_pop_data[gdp_pop_data$Series.Name == "GDP (current US$)",'2005']
+pop = gdp_pop_data[gdp_pop_data$Series.Name == "Population, total",'2005']
+print(gdp[1:193,])
+print(pop[1:193,])
+gdp_data = gdp[1:193,]
+pop_data = pop[1:193,]
+gdp_pop = data.frame(gdp_data, pop_data)
+head(gdp_pop)
+#plot(gdp_data[,'2005'],pop_data[,'2005'])
+ggplot(gdp_pop, aes(X2005,X2005.1)) +
+  geom_point()
+```
 
 ## Model
 - Model: Linear regression for time series to predict based on year or country
