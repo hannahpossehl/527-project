@@ -9,15 +9,12 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars, echo = FALSE}
+In total using 193 countries.
+### Loading Data
+```{r echo = FALSE}
 esg_data = readxl::read_excel("C:/Users/hanna/OneDrive/Documents/R/Countries_Environment_Social_and_Governance_(ESG)_Data.xlsx", na = "..")
 # above data last updated Feb. 9th 2023
+# no Kosovo, Palestine, Taiwan, Vatican City
 cor_years = esg_data[,c(1,3,12:37)]
 rev = cor_years[, c(1,2,ncol(cor_years):3)]
 head(rev)
@@ -30,6 +27,7 @@ regressors = rev
 ```{r, include = FALSE}
 esg_data = data.frame(esg_data)
 sue_data = readxl::read_excel("C:/Users/hanna/OneDrive/Documents/R/Sustainable_Energy_for_All.xlsx", col_names = c("Country.Name", "Country.code", "Time", "Time.code", "ACCESS.CFT.TOT", "ACCESS.ELECTRICITY.RURAL", "ACCESS.ELECTRICITY.TOT", "ACCESS.ELECTRICITY.URBAN", "PRIMARY.ENERGY.INTENSITY", "REN.ELECTRICITY.OUTPUT", "SHARE.RE.IN.ELECTRICITY", "RE.CONSUMPTION", "SHARE.TOTAL.RE.IN.TFEC", "TOTAL.ELECTRICITY.OUTPUT", "TOTAL.FINAL.ENERGY.CONSUM]"), col_types = c("text", "text", "numeric", "text", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric"))
+# has only 195 countries does not have data for Palestine and Vatican City
 sefa_data = data.frame(sue_data)
 sefa = sefa_data[2:6999,]
 perc = !is.na(sefa$SHARE.RE.IN.ELECTRICITY)
@@ -39,6 +37,7 @@ Y = data.frame(nonna$Country.Name, nonna$Time, nonna$SHARE.RE.IN.ELECTRICITY)
 #head(temp)
 ```
 
+### Combining the two datasets
 ```{r}
 library(reshape)
 library(reshape2)
@@ -58,33 +57,14 @@ head(regressors_join)
 tail(regressors_join)
 ```
 
+### Checking for NA values
 ```{r}
-sum(is.na(regressors_join$'1990'))
-sum(is.na(regressors_join$'1991'))
-sum(is.na(regressors_join$'1992'))
-sum(is.na(regressors_join$'1993'))
-sum(is.na(regressors_join$'1994'))
-sum(is.na(regressors_join$'1995'))
-sum(is.na(regressors_join$'1996'))
-sum(is.na(regressors_join$'1997'))
-sum(is.na(regressors_join$'1998'))
-sum(is.na(regressors_join$'1999'))
-sum(is.na(regressors_join$'2000'))
-sum(is.na(regressors_join$'2001'))
-sum(is.na(regressors_join$'2002'))
-sum(is.na(regressors_join$'2003'))
-sum(is.na(regressors_join$'2004'))
-sum(is.na(regressors_join$'2005'))
-sum(is.na(regressors_join$'2006'))
-sum(is.na(regressors_join$'2007'))
-sum(is.na(regressors_join$'2008'))
-sum(is.na(regressors_join$'2009'))
-sum(is.na(regressors_join$'2010'))
-sum(is.na(regressors_join$'2011'))
-sum(is.na(regressors_join$'2012'))
-sum(is.na(regressors_join$'2013'))
-sum(is.na(regressors_join$'2014'))
-sum(is.na(regressors_join$'2015'))
+years = c('1990','1991','1992','1993','1994','1995','1996','1997','1998','1999','2000','2001','2002','2003','2004','2005','2006','2007','2008','2009','2010','2011','2012','2013','2014','2015')
+na_by_years = c()
+for (year in years){
+  na_by_years = append(na_by_years, sum(is.na(regressors_join[,year])))
+}
+na_by_years
 ```
 ```{r}
 library(dplyr)
@@ -100,11 +80,6 @@ unique(regressors_join[empty_rows,]$Category)
 n_distinct(regressors_join[empty_rows,]$Country.Name)
 unique(regressors_join[empty_rows,]$Country.Name)
 ```
-```{r}
-regressors_join[empty_rows,] %>%
-  group_by(Country.Name) %>% 
-  summarize(num_Cat = n_distinct(regressors_join[empty_rows,]$Category))
-```
 
 ```{r}
 library(tidyr)
@@ -113,37 +88,183 @@ as.data.frame(table(empty_data$Country.Name))
 as.data.frame(table(empty_data$Category))
 ```
 
+### Description of Feature variables
 ```{r pressure, echo=FALSE}
 library(summarytools)
-class(regressors_join$'1990')= "Numeric"
-class(regressors_join$'1991')= "Numeric"
-class(regressors_join$'1992')= "Numeric"
-class(regressors_join$'1993')= "Numeric"
-class(regressors_join$'1994')= "Numeric"
-class(regressors_join$'1995')= "Numeric"
-class(regressors_join$'1996')= "Numeric"
-class(regressors_join$'1997')= "Numeric"
-class(regressors_join$'1998')= "Numeric"
-class(regressors_join$'1999')= "Numeric"
-class(regressors_join$'2000')= "Numeric"
-class(regressors_join$'2001')= "Numeric"
-class(regressors_join$'2002')= "Numeric"
-class(regressors_join$'2003')= "Numeric"
-class(regressors_join$'2004')= "Numeric"
-class(regressors_join$'2005')= "Numeric"
-class(regressors_join$'2006')= "Numeric"
-class(regressors_join$'2007')= "Numeric"
-class(regressors_join$'2008')= "Numeric"
-class(regressors_join$'2009')= "Numeric"
-class(regressors_join$'2010')= "Numeric"
-class(regressors_join$'2011')= "Numeric"
-class(regressors_join$'2012')= "Numeric"
-class(regressors_join$'2013')= "Numeric"
-class(regressors_join$'2014')= "Numeric"
-class(regressors_join$'2015')= "Numeric"
-
 
 descr(regressors_join[,3:28])
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+### Creating Country Clusters
+```{r}
+library(ggplot2)
+gdp_pop_data <- readxl::read_excel("gdp_pop_data.xlsx", col_types = c("text", "text", "text", "text", "numeric", "numeric", "numeric"))
+colnames(gdp_pop_data) <- c("Country.Name", "Country.Code", "Series.Name", "Series.Code", "2005", "2010", "2015")
+head(gdp_pop_data)
+gdp = gdp_pop_data[gdp_pop_data$Series.Name == "GDP (current US$)",'2005']
+pop = gdp_pop_data[gdp_pop_data$Series.Name == "Population, total",'2005']
+print(gdp[1:193,])
+print(pop[1:193,])
+gdp_data = gdp[1:193,]
+pop_data = pop[1:193,]
+gdp_pop = data.frame(gdp_data, pop_data)
+head(gdp_pop)
+#plot(gdp_data[,'2005'],pop_data[,'2005'])
+ggplot(gdp_pop, aes(X2005,X2005.1)) +
+  geom_point()
+```
+###Plot for 2005
+```{r}
+library(ggplot2)
+gdp_pop_data <- readxl::read_excel("gdp_pop_data.xlsx", col_types = c("text", "text", "text", "text", "numeric", "numeric", "numeric"))
+colnames(gdp_pop_data) <- c("Country.Name", "Country.Code", "Series.Name", "Series.Code", "2005", "2010", "2015")
+head(gdp_pop_data)
+gdp_2005 = gdp_pop_data[gdp_pop_data$Series.Name == "GDP (current US$)",'2005']
+pop_2005 = gdp_pop_data[gdp_pop_data$Series.Name == "Population, total",'2005']
+# print(gdp[1:193,])
+# print(pop[1:193,])
+gdp_data_2005 = gdp_2005[1:193,]
+pop_data_2005 = pop_2005[1:193,]
+gdp_pop_2005 = data.frame(gdp_data_2005, pop_data_2005)
+# head(gdp_pop)
+#plot(gdp_data[,'2005'],pop_data[,'2005'])
+#Divided by Mean Standardization
+gdp_pop_2005$X2005 <- gdp_pop_2005$X2005 / mean(gdp_pop_2005$X2005, na.rm = TRUE)
+gdp_pop_2005$X2005.1 <- gdp_pop_2005$X2005.1 / mean(gdp_pop_2005$X2005.1, na.rm = TRUE)
+#Plot of dividing by mean
+ggplot(gdp_pop_2005, aes(X2005,X2005.1)) +
+  geom_point() +
+  ggtitle("Population v. GDP (2005)") +
+  xlab("Population")+
+  ylab("GDP")
+#Standardizing with mean = 0 and sd = 1
+gdp_pop_2005_s <- gdp_pop_2005 %>% mutate_at(c('X2005', 'X2005.1'), ~(scale(.) %>% as.vector))
+ggplot(gdp_pop_2005_s, aes(X2005,X2005.1)) +
+  geom_point() +
+  ggtitle("Population v. GDP (2005)") +
+  xlab("Population")+
+  ylab("GDP")
+```
+
+###Plot for 2010
+```{r}
+library(ggplot2)
+gdp_pop_data <- readxl::read_excel("gdp_pop_data.xlsx", col_types = c("text", "text", "text", "text", "numeric", "numeric", "numeric"))
+colnames(gdp_pop_data) <- c("Country.Name", "Country.Code", "Series.Name", "Series.Code", "2005", "2010", "2015")
+head(gdp_pop_data)
+gdp_2010 = gdp_pop_data[gdp_pop_data$Series.Name == "GDP (current US$)",'2010']
+pop_2010 = gdp_pop_data[gdp_pop_data$Series.Name == "Population, total",'2010']
+# print(gdp[1:193,])
+# print(pop[1:193,])
+gdp_data_2010 = gdp_2010[1:193,]
+pop_data_2010 = pop_2010[1:193,]
+gdp_pop_2010 = data.frame(gdp_data_2010, pop_data_2010)
+# head(gdp_pop)
+#plot(gdp_data[,'2005'],pop_data[,'2005'])
+#Standardizing by dividing by mean
+gdp_pop_2010$X2010 <- gdp_pop_2010$X2010 / mean(gdp_pop_2010$X2010, na.rm = TRUE)
+gdp_pop_2010$X2010.1 <- gdp_pop_2010$X2010.1 / mean(gdp_pop_2010$X2010.1, na.rm = TRUE)
+#Plot
+ggplot(gdp_pop_2010, aes(X2010,X2010.1)) +
+  geom_point() +
+  ggtitle("Population v. GDP (2010)") +
+  xlab("Population")+
+  ylab("GDP")
+#Standardizing with mean = 0 and sd = 1
+gdp_pop_2010_s <- gdp_pop_2010 %>% mutate_at(c('X2010', 'X2010.1'), ~(scale(.) %>% as.vector))
+ggplot(gdp_pop_2010_s, aes(X2010,X2010.1)) +
+  geom_point() +
+  ggtitle("Population v. GDP (2010)") +
+  xlab("Population")+
+  ylab("GDP")
+```
+
+###Plot for 2015
+```{r}
+library(ggplot2)
+gdp_pop_data <- readxl::read_excel("gdp_pop_data.xlsx", col_types = c("text", "text", "text", "text", "numeric", "numeric", "numeric"))
+colnames(gdp_pop_data) <- c("Country.Name", "Country.Code", "Series.Name", "Series.Code", "2005", "2010", "2015")
+head(gdp_pop_data)
+gdp_2015 = gdp_pop_data[gdp_pop_data$Series.Name == "GDP (current US$)",'2015']
+pop_2015 = gdp_pop_data[gdp_pop_data$Series.Name == "Population, total",'2015']
+# print(gdp[1:193,])
+# print(pop[1:193,])
+gdp_data_2015 = gdp_2015[1:193,]
+pop_data_2015 = pop_2015[1:193,]
+gdp_pop_2015 = data.frame(gdp_data_2015, pop_data_2015)
+# head(gdp_pop)
+#plot(gdp_data[,'2005'],pop_data[,'2005'])
+#Standardizing by dividing by mean
+gdp_pop_2015$X2015 <- gdp_pop_2015$X2015 / mean(gdp_pop_2015$X2015, na.rm = TRUE)
+gdp_pop_2015$X2015.1 <- gdp_pop_2015$X2015.1 / mean(gdp_pop_2015$X2015.1, na.rm = TRUE)
+#Plot
+ggplot(gdp_pop_2015, aes(X2015,X2015.1)) +
+  geom_point() +
+  ggtitle("Population v. GDP (2015)") +
+  xlab("Population")+
+  ylab("GDP")
+#Standardizing with mean = 0 and sd = 1
+gdp_pop_2015_s <- gdp_pop_2015 %>% mutate_at(c('X2015', 'X2015.1'), ~(scale(.) %>% as.vector))
+ggplot(gdp_pop_2015_s, aes(X2015,X2015.1)) +
+  geom_point() +
+  ggtitle("Population v. GDP (2015)") +
+  xlab("Population")+
+  ylab("GDP")
+```
+
+
+
+## Outlier Detection
+
+```{r}
+agland = regressors_join[regressors_join$Category == "Agricultural land (% of land area)",]
+countries = agland$Country.Name
+num_countries = length(t(agland[,"Country.Name"]))
+outliers = data.frame(ncol = num_countries, nrows = 0)
+colnames(outliers) = agland[,"Country.Name"]
+sum = 0
+outliers_q = data.frame(ncol = num_countries, nrows = 0)
+colnames(outliers_q) = agland[,"Country.Name"]
+sum_q = 0
+
+for (country in countries){
+  x = unlist(agland[agland$Country.Name == country,], use.names = FALSE)
+  X = as.numeric(x[3:28])
+  #print(median(X))
+  ## MAD method, Hampler Filter
+  mad = median(abs((X - median(X))))
+  lower_bound = median(X) - 3* mad
+  upper_bound = median(X) + 3* mad
+  outliers[,country] = t(which(X < lower_bound | X > upper_bound))
+  typeof(outliers)
+  sum = sum + length(outliers[,country])
+  #print(outliers[,country])
+  #print(country)
+  #print(length(outliers[,country]))
+  ## IQR
+  quantiles = quantile(X, na.rm = TRUE)
+  first_q = quantiles["25%"]
+  third_q = quantiles["75%"]
+  diff_q = third_q - first_q
+  upper_bound_q = third_q + 1.5*diff_q
+  lower_bound_q = first_q - 1.5*diff_q
+  outliers_q[,country] = t(which(X < lower_bound_q | X > upper_bound_q))
+  sum_q = sum_q + length(outliers_q[,country])
+ 
+}
+print(sum)
+print(sum_q)
+#head(agland)
+#mad = median(abs(x - median(x)))
+#lower_bound = median() - 3* mad()
+#upper_bound = median() + 3* mad()
+
+```
+
+MAD:674 outliers, out of 5,018 total data points.
+IQR: 287 outliers out ot 5,018
+
+```{r}
+
+```
