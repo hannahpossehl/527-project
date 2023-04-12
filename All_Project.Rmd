@@ -1,0 +1,149 @@
+---
+title: "ESE 527 Project"
+output: pdf_document
+date: "2023-04-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars, echo = FALSE, include=FALSE}
+esg_data = readxl::read_excel("C:/Users/Owner/Documents/ESE 527/Environment_Social_and_Governance_(ESG)_Data.xlsx")
+# above data last updated Feb. 9th 2023
+esg_data = data.frame(esg_data)
+sue_data = readxl::read_excel("C:/Users/Owner/Documents/ESE 527/Sustainable_Energy_for_All.xlsx", col_names = c("Country.Name", "Country.code", "Time", "Time.code", "ACCESS.CFT.TOT", "ACCESS.ELECTRICITY.RURAL", "ACCESS.ELECTRICITY.TOT", "ACCESS.ELECTRICITY.URBAN", "PRIMARY.ENERGY.INTENSITY", "REN.ELECTRICITY.OUTPUT", "SHARE.RE.IN.ELECTRICITY", "RE.CONSUMPTION", "SHARE.TOTAL.RE.IN.TFEC", "TOTAL.ELECTRICITY.OUTPUT", "TOTAL.FINAL.ENERGY.CONSUM]"), col_types = c("text", "text", "numeric", "text", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric"))
+sefa_data = data.frame(sue_data)
+sefa = sefa_data[2:6999,]
+perc = !is.na(sefa$SHARE.RE.IN.ELECTRICITY)
+nonna = sefa[perc,]
+Y = data.frame(nonna$Country.Name, nonna$Time, nonna$SHARE.RE.IN.ELECTRICITY)
+```
+
+```{r, echo = FALSE, include=FALSE}
+north_america_y = Y$nonna.Country.Name == "United States"|Y$nonna.Country.Name == "Canada"|Y$nonna.Country.Name == "Bermuda"
+north_america_y = Y[north_america_y,]
+south_asia_y = Y$nonna.Country.Name == "Afghanistan"|Y$nonna.Country.Name == "Bangladesh"|Y$nonna.Country.Name == "Bhutan"|Y$nonna.Country.Name == "Pakistan"|Y$nonna.Country.Name == "Nepal"|Y$nonna.Country.Name == "India"|Y$nonna.Country.Name == "Sri Lanka"|Y$nonna.Country.Name == "Maldives"
+south_asia_y = Y[south_asia_y,]
+```
+
+```{r, warning =FALSE, echo = FALSE}
+library(ggplot2)
+ggplot(north_america_y, aes(x=nonna.Time, y = nonna.SHARE.RE.IN.ELECTRICITY))+
+  geom_line(aes(linetype = nonna.Country.Name))+
+  labs(x="Year",y="% renewable energy of total energy production", title="Target Variable for North American Region")
+```
+
+## South Asia
+
+```{r, warning =FALSE, echo = FALSE}
+ggplot(south_asia_y, aes(x=nonna.Time, y = nonna.SHARE.RE.IN.ELECTRICITY))+
+  geom_line(aes(linetype = nonna.Country.Name))+
+  labs(x="Year",y="% renewable energy of total energy production", title="Target Variable for South Asia Region")
+```
+
+## Outliers
+```{r, warning = FALSE}
+elec_access = esg_data[esg_data$Series.Name == "Access to clean fuels and technologies for cooking (% of population)",]
+hist(as.numeric(elec_access$X2014..YR2014.), col = "red", main = "Histogram of Access to clean fuels for cooking for 2014 and 2015", xlab = "Access to clean fuels and technologies for cooking (% of population)", ylab = "Frequency")
+hist(as.numeric(elec_access$X2015..YR2015.), add=T, col = "blue")
+legend("topleft", c("2014", "2015"), col = c("red", "blue"), lwd = 10)
+```
+
+## Other Data
+
+```{r, warning =FALSE, echo = FALSE}
+north_america = nonna$Country.Name == "United States"|nonna$Country.Name == "Canada"|nonna$Country.Name == "Bermuda"
+north_america = nonna[north_america,]
+ggplot(north_america, aes(x=Time, y = ACCESS.ELECTRICITY.TOT))+
+  geom_line(aes(linetype = Country.Name))+
+  labs(x="Year",y="% of total population with access to electricity", title="Total electricity access for North America Region")
+```
+
+## South Asia
+
+```{r, warning =FALSE, echo = FALSE}
+south_asia = nonna$Country.Name == "Afghanistan"|nonna$Country.Name == "Bangladesh"|nonna$Country.Name == "Bhutan"|nonna$Country.Name == "Pakistan"|nonna$Country.Name == "Nepal"|nonna$Country.Name == "India"|nonna$Country.Name == "Sri Lanka"|nonna$Country.Name == "Maldives"
+south_asia = nonna[south_asia,]
+ggplot(south_asia, aes(x=Time, y = ACCESS.ELECTRICITY.TOT))+
+  geom_line(aes(linetype = Country.Name))+
+  labs(x="Year",y="% of total population with access to electricity", title="Total electricity access for South Asia Region")
+```
+
+## GDP Data
+```{r}
+#Load in GDP Data
+gdp_data <- readxl::read_excel("C:/Users/Owner/Documents/ESE 527/GDP_Data.xls")
+gdp_data <- gdp_data[-c(1:2),]
+gdp_data <- janitor::row_to_names(gdp_data,1)
+ggplot(gdp_data, aes(x=gdp_data[,"2000"], y = nonna.SHARE.RE.IN.ELECTRICITY))+
+  geom_line(aes(linetype = Country.Name))+
+  labs(x="Year",y="% renewable energy of total energy production", title="Target Variable for North American Region")
+```
+
+
+###Population Data
+```{r}
+pop_data <- read_csv("C:/Users/Owner/Documents/ESE 527/pop_data.csv")
+pop_data$total <- pop_data$M + pop_data$F
+pop_data_2000 <- pop_data %>% filter(Year == 2000)
+pop_data_2010 <- pop_data %>% filter(Year == 2010)
+pop_data_2005 <- pop_data %>% filter(Year == 2005)
+pop_data_2020 <- pop_data %>% filter(Year == 2020)
+pop_data_US <- pop_data %>% filter(Country == "United States of America", Year >= 2000) %>% group_by(Year) %>% summarise(pop = sum(total))
+pop_data_grouped <- pop_data %>% filter(Year == c(2000,2010,2020)) %>% group_by(Country, Year) %>% summarise(pop = sum(total))
+
+#Plot for U.S. Population by Year
+ggplot(pop_data_US, aes(x=Year, y = total, group = Year))+
+  geom_point(aes(linetype = Country))+
+  labs(x="Year",y="Total population", title="Total population for U.S.")
+
+#Graph for Population by Country
+ggplot(pop_data_grouped[which(pop_data_grouped$Year == 2000),], aes(x=Year, y = pop))+
+  geom_point(aes(fill = Country))+
+  labs(x="Year",y="Total population", title="Total population by Country")
+```
+
+###World Population Data 
+```{r}
+world_gdp <- read_csv("C:/Users/Owner/Documents/ESE 527/gdp_1960_2020.csv")
+world_gdp_grouped <- world_gdp %>% filter(year == c(2000,2010,2020)) %>% group_by(country, year) %>% summarise(sum_gdp = sum(gdp))
+colnames(world_gdp_grouped) <- c("Country", "Year", "GDP")
+
+gdp_pop <- merge(world_gdp_grouped,pop_data_grouped, by = "Country")
+
+if (world_gdp_grouped$Year == pop_data_grouped$Year){
+  pop_data_grouped$gdp <- world_gdp_grouped$GDP
+}
+
+gdp_pop <- gdp_pop.loc[gdp_pop$year.x == gdp_pop$Year.y]
+```
+
+
+### Correct GDP and Population Dataset
+```{r}
+gdp_pop_data <- readxl::read_excel("C:/Users/Owner/Documents/ESE 527/gdp_pop_data.xlsx")
+colnames(gdp_pop_data) <- c("Country.Name", "Country.Code", "Series.Name", "Series.Code", "2005", "2010", "2015")
+ggplot(gdp_pop_data, aes(x = Series.Name["GDP(Current US$)"], y = Series.Name["Population, total"])) +
+  geom_point(color = "Country.Name")
+```
+
+
+## Model
+- Model: Linear regression for time series to predict based on year or country
+- Validation/Testing: Use last five years or subset of countries
+- Error measure: Mean Squared Error(MSE)
+
+## Timeline
+- Look at standardization of variables by March 24th
+- Create first linear regression model by no later than March 31st
+- Find error/accuracy in the model by no later than April 7th
+- Fix/improve model by April 10th
+- Find extrapolation of 2035 and 2050, offering prescriptive analytics on how to attain the value found by April 14th or ¾ semester report
+- Look into funding towards renewable energy after ¾ semester report
