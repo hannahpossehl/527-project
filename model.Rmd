@@ -1,0 +1,334 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+In total using 193 countries.
+### Loading Data
+```{r echo = FALSE}
+esg_data = readxl::read_excel("C:/Users/hanna/OneDrive/Documents/R/Countries_Environment_Social_and_Governance_(ESG)_Data.xlsx", na = "..")
+# above data last updated Feb. 9th 2023
+# no Kosovo, Palestine, Taiwan, Vatican City
+cor_years = esg_data[,c(1,3,12:37)]
+rev = cor_years[, c(1,2,ncol(cor_years):3)]
+head(rev)
+colnames(rev) = c("Country.Name", "Category", "1990", "1991", "1992", "1993", "1994", "1995", "1996", "1997", "1998", "1999", "2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015")
+head(rev)
+regressors = rev
+```
+
+```{r, include = FALSE}
+esg_data = data.frame(esg_data)
+sue_data = readxl::read_excel("C:/Users/hanna/OneDrive/Documents/R/Sustainable_Energy_for_All.xlsx", col_names = c("Country.Name", "Country.code", "Time", "Time.code", "ACCESS.CFT.TOT", "ACCESS.ELECTRICITY.RURAL", "ACCESS.ELECTRICITY.TOT", "ACCESS.ELECTRICITY.URBAN", "PRIMARY.ENERGY.INTENSITY", "REN.ELECTRICITY.OUTPUT", "SHARE.RE.IN.ELECTRICITY", "RE.CONSUMPTION", "SHARE.TOTAL.RE.IN.TFEC", "TOTAL.ELECTRICITY.OUTPUT", "TOTAL.FINAL.ENERGY.CONSUM]"), col_types = c("text", "text", "numeric", "text", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric"))
+# has only 195 countries does not have data for Palestine and Vatican City
+sefa_data = data.frame(sue_data)
+sefa = sefa_data[2:6999,]
+perc = !is.na(sefa$SHARE.RE.IN.ELECTRICITY)
+nonna = sefa[perc,]
+Y = data.frame(nonna$Country.Name, nonna$Time, nonna$SHARE.RE.IN.ELECTRICITY)
+#temp = tibble::rownames_to_column(nonna, "Time")
+#head(temp)
+```
+
+
+### Combining the two datasets
+```{r}
+library(reshape)
+library(reshape2)
+head(nonna)
+colnames(nonna)
+cast_data = melt(nonna[,c(1,3,5:15)], id = c("Country.Name", "Time"), variable.name="Category")
+head(cast_data)
+```
+
+```{r}
+c_data = dcast(cast_data,Country.Name+Category ~ Time, value.var = "value")
+head(c_data)
+```
+
+```{r}
+regressors_join = rbind(regressors, c_data)
+head(regressors_join)
+tail(regressors_join)
+```
+
+### Checking for NA values
+```{r}
+years = c('1990','1991','1992','1993','1994','1995','1996','1997','1998','1999','2000','2001','2002','2003','2004','2005','2006','2007','2008','2009','2010','2011','2012','2013','2014','2015')
+na_by_years = c()
+for (year in years){
+  na_by_years = append(na_by_years, sum(is.na(regressors_join[,year])))
+}
+na_by_years
+```
+
+```{r}
+library(dplyr)
+rowsums = rowSums(is.na(regressors_join))
+#rowsums[rowsums>=10]
+empty_rows = which(rowsums==26)
+empty_rows
+sum(is.na(regressors_join))
+ empty_data = regressors_join[empty_rows,]
+regressors_join[empty_rows,]
+n_distinct(regressors_join[empty_rows,]$Category)
+unique(regressors_join[empty_rows,]$Category)
+n_distinct(regressors_join[empty_rows,]$Country.Name)
+unique(regressors_join[empty_rows,]$Country.Name)
+```
+
+### Creating Country Clusters
+```{r}
+library(ggplot2)
+gdp_pop_data <- readxl::read_excel("gdp_pop_data.xlsx", col_types = c("text", "text", "text", "text", "numeric", "numeric", "numeric"))
+colnames(gdp_pop_data) <- c("Country.Name", "Country.Code", "Series.Name", "Series.Code", "2005", "2010", "2015")
+head(gdp_pop_data)
+gdp = gdp_pop_data[gdp_pop_data$Series.Name == "GDP (current US$)",'2010']
+pop = gdp_pop_data[gdp_pop_data$Series.Name == "Population, total",'2010']
+gdp_data_2010 = gdp[1:193,]
+pop_data_2010 = pop[1:193,]
+gdp_pop = data.frame(gdp_data, pop_data)
+```
+
+```{r}
+#2010 missing data for Somalia and North Korean only
+cap_2010 = gdp_pop_data[gdp_pop_data$Series.Name == "GDP per capita (current US$)",'2010']
+gdp_pop_cap_2010 = data.frame(gdp_data_2010, pop_data_2010, cap_2010)
+kmeans = kmeans(gdp_pop_cap_2010[complete.cases(gdp_pop_cap_2010),], centers = 20, nstart = 20)
+as.data.frame(table(kmeans$cluster))
+```
+
+```{r}
+countries = unique(gdp_pop_data[,"Country.Name"])
+#countries[countries!="Somalia"&countries != "Korea, Dem. People's Rep."]
+countries[countries=="United States"]= "USA"
+countries[countries=="Venezuela, RB"]= "Venezuela"
+countries[countries=="Yemen, Rep."]= "Yemen"
+countries[countries=="United Kingdom"]= "UK"
+countries[countries=="Gambia, The"]= "Gambia"
+countries[countries=="Bahamas, The"]= "Bahamas"
+countries[countries=="Brunei Darussalam"]= "Brunei"
+countries[countries=="Cabo Verde"]= "Cape Verde"
+countries[countries=="Congo, Dem. Rep."]= "Democratic Republic of the Congo"
+countries[countries=="Congo, Rep."]= "Republic of Congo"
+countries[countries=="Cote d'Ivoire"]= "Ivory Coast"
+countries[countries=="Czechia"]= "Czech Republic"
+countries[countries=="Egypt, Arab Rep."]= "Egypt"
+countries[countries=="Eswatini"]= "Swaziland"
+countries[countries=="Korea, Rep."]= "South Korea"
+countries[countries=="Kyrgyz Republic"]= "Kyrgyzstan"
+countries[countries=="Lao PDR"]= "Laos"
+countries[countries=="Russian Federation"]= "Russia"
+countries[countries=="Slovak Republic"]= "Slovakia"
+countries[countries=="Syrian Arab Republic"]= "Syria"
+countries[countries=="Iran, Islamic Rep."]= "Iran"
+countries[countries=="Turkiye"]= "Turkey"
+cluster = kmeans$cluster
+for(i in 1:length(cluster)){
+  if(nchar(cluster[i])<2){
+      cluster[i] = paste("0", cluster[i], sep = "")    
+  }
+}
+kmeans_clusters = cbind(countries[countries!="Somalia"&countries != "Korea, Dem. People's Rep."], cluster)
+kmeans_clusters = data.frame(kmeans_clusters)
+print(kmeans_clusters)
+```
+
+
+```{r}
+wss = c()
+for(k in 5:35){
+  kmeans_k = kmeans(gdp_pop_cap_2010[complete.cases(gdp_pop_cap_2010),], centers = k, nstart = 10)
+  wss = append(wss, kmeans_k$tot.withinss)
+  if(k==8){
+    print(data.frame(table(kmeans_k$cluster)))
+  }
+}
+x = 5:35
+print(wss)
+plot(x, wss)
+```
+
+
+## Mapping clusters
+```{r}
+#library(ggmaps)
+library(stringr)
+library(maps)
+library(mapdata)
+#unique(map_data("world")$region)
+#world = fortify()
+gg =  ggplot()
+gg = gg + geom_map(data = map_data("world"), map = map_data("world"), aes(x=long, y=lat, map_id=region), fill = "white")
+gg = gg + geom_map(data = kmeans_clusters, map = map_data("world"), aes(map_id=V1, fill = cluster))
+gg = gg + scale_fill_manual(values = c("#999999", "#E69F00", "#56B4E9", "#0000FF", "#9933FF", "#CC99FF", "#FF66FF", "#FF3399", "#99004C", "#00FFFF", "#00994c", "#33FF33", "#ffff00", "#ffb266", "#ff6666", "#ff0000", "#660000", "#006666", "#003366", "#404040" ))
+gg = gg + labs(colour="Cluster")
+gg = gg + guides(fill = guide_legend(ncol=2))
+#gg = gg + theme(legend.position = "bottom")
+gg
+```
+
+
+```{r}
+kmeans_clusters[kmeans_clusters$cluster == "01",]
+kmeans_clusters[kmeans_clusters$cluster == "02",]
+kmeans_clusters[kmeans_clusters$cluster == "03",]
+kmeans_clusters[kmeans_clusters$cluster == "04",]
+kmeans_clusters[kmeans_clusters$cluster == "05",]
+kmeans_clusters[kmeans_clusters$cluster == "06",]
+kmeans_clusters[kmeans_clusters$cluster == "07",]
+kmeans_clusters[kmeans_clusters$cluster == "08",]
+kmeans_clusters[kmeans_clusters$cluster == "09",]
+kmeans_clusters[kmeans_clusters$cluster == "10",]
+kmeans_clusters[kmeans_clusters$cluster == "11",]
+kmeans_clusters[kmeans_clusters$cluster == "12",]
+kmeans_clusters[kmeans_clusters$cluster == "13",]
+kmeans_clusters[kmeans_clusters$cluster == "14",]
+kmeans_clusters[kmeans_clusters$cluster == "15",]
+kmeans_clusters[kmeans_clusters$cluster == "16",]
+kmeans_clusters[kmeans_clusters$cluster == "17",]
+kmeans_clusters[kmeans_clusters$cluster == "18",]
+kmeans_clusters[kmeans_clusters$cluster == "19",]
+kmeans_clusters[kmeans_clusters$cluster == "20",]
+```
+
+## Removing NA rows
+```{r}
+library(dplyr)
+#regressors_join
+regress = regressors_join[regressors_join$Category!="Mammal species, threatened"&regressors_join$Category!="Proportion of bodies of water with good ambient water quality"&regressors_join$Category!="Terrestrial and marine protected areas (% of total territorial area)",]
+
+cluster_15 = regress[regress$Country.Name == "Brazil"|regress$Country.Name == "France"|regress$Country.Name == "Germany"|regress$Country.Name == "Italy"|regress$Country.Name == "United Kingdom",]
+head(cluster_15)
+rowsums_15 = rowSums(is.na(cluster_15))
+#rowsums_15[rowsums_15>=10]
+empty_rows_15 = which(rowsums_15==26)
+mostly_empty_rows_15 =  which(rowsums_15>=6)
+#empty_rows_15
+sum(is.na(cluster_15))
+empty_data = cluster_15[empty_rows_15,]
+mostly_empty_data = cluster_15[mostly_empty_rows_15,]
+empty_data
+n_distinct(empty_data$Category)
+unique(empty_data$Category)
+n_distinct(empty_data$Country.Name)
+unique(empty_data$Country.Name)
+
+n_distinct(mostly_empty_data$Category)
+unique(mostly_empty_data$Category)
+empty_cats = unique(mostly_empty_data$Category)
+cleaned_data = cluster_15
+for(category in empty_cats){
+  cleaned_data = cleaned_data[cleaned_data$Category!= category,]
+}
+n_distinct(cleaned_data$Category)
+sum(is.na(cleaned_data))
+```
+
+## Plotting target variable for cluster 15
+```{r}
+library(reshape)
+library(reshape2)
+cluster_15_y = cleaned_data[cleaned_data$Category == "SHARE.RE.IN.ELECTRICITY",]
+cluster_15_y
+y_15 = melt(cluster_15_y[,c(1, 3:28)], id = c("Country.Name"), variable.name="Time")
+y_15 = y_15[order(y_15$Country.Name),]
+y_15
+ggplot(y_15, aes(x=as.numeric(Time), y = value))+
+  geom_line(aes(linetype = Country.Name))+
+  labs(x="Year", y="% renewable energy of total energy production", title="Target Variable for cluster 15")
+
+```
+
+## Cluster 10
+```{r}
+cluster_10 = regress[regress$Country.Name == "Colombia"|regress$Country.Name == "Denmark"|regress$Country.Name == "Greece"|regress$Country.Name == "Thailand"|regress$Country.Name == "United Arab Emirates",]
+head(cluster_10)
+rowsums_10 = rowSums(is.na(cluster_10))
+empty_rows_10 = which(rowsums_10==26)
+mostly_empty_rows_10 =  which(rowsums_10>=6)
+#empty_rows_15
+sum(is.na(cluster_10))
+empty_data_10 = cluster_10[empty_rows_10,]
+mostly_empty_data_10 = cluster_10[mostly_empty_rows_10,]
+empty_data_10
+n_distinct(empty_data_10$Category)
+unique(empty_data_10$Category)
+n_distinct(empty_data_10$Country.Name)
+unique(empty_data_10$Country.Name)
+
+n_distinct(mostly_empty_data_10$Category)
+unique(mostly_empty_data_10$Category)
+empty_cats_10 = unique(mostly_empty_data_10$Category)
+cleaned_data_10 = cluster_10
+for(category in empty_cats_10){
+  cleaned_data_10 = cleaned_data_10[cleaned_data_10$Category!= category,]
+}
+n_distinct(cleaned_data_10$Category)
+sum(is.na(cleaned_data_10))
+```
+
+## Plotting target variable for cluster 10
+```{r}
+library(reshape)
+library(reshape2)
+cluster_10_y = cleaned_data_10[cleaned_data_10$Category == "SHARE.RE.IN.ELECTRICITY",]
+cluster_10_y
+y_10 = melt(cluster_10_y[,c(1, 3:28)], id = c("Country.Name"), variable.name="Time")
+y_10 = y_10[order(y_15$Country.Name),]
+y_10
+ggplot(y_10, aes(x=as.numeric(Time), y = value))+
+  geom_line(aes(linetype = Country.Name))+
+  labs(x="Year", y="% renewable energy of total energy production", title="Target Variable for cluster 10")
+
+```
+
+## Outlier Detection
+
+```{r}
+agland = cleaned_data[cleaned_data$Category == "Agricultural land (% of land area)",]
+countries = agland$Country.Name
+num_countries = length(t(agland[,"Country.Name"]))
+outliers = data.frame(ncol = num_countries, nrows = 0)
+colnames(outliers) = agland[,"Country.Name"]
+sum = 0
+outliers_q = data.frame(ncol = num_countries, nrows = 0)
+colnames(outliers_q) = agland[,"Country.Name"]
+sum_q = 0
+
+for (country in countries){
+  x = unlist(agland[agland$Country.Name == country,], use.names = FALSE)
+  X = as.numeric(x[3:28])
+  #print(median(X))
+  ## MAD method, Hampler Filter
+  mad = median(abs((X - median(X))))
+  lower_bound = median(X) - 3* mad
+  upper_bound = median(X) + 3* mad
+  outliers[,country] = t(which(X < lower_bound | X > upper_bound))
+  typeof(outliers)
+  sum = sum + length(outliers[,country])
+  #print(outliers[,country])
+  #print(country)
+  #print(length(outliers[,country]))
+  ## IQR
+  quantiles = quantile(X, na.rm = TRUE)
+  first_q = quantiles["25%"]
+  third_q = quantiles["75%"]
+  diff_q = third_q - first_q
+  upper_bound_q = third_q + 1.5*diff_q
+  lower_bound_q = first_q - 1.5*diff_q
+  outliers_q[,country] = t(which(X < lower_bound_q | X > upper_bound_q))
+  sum_q = sum_q + length(outliers_q[,country])
+ 
+}
+print(sum)
+print(sum_q)
+#head(agland)
+#mad = median(abs(x - median(x)))
+#lower_bound = median() - 3* mad()
+#upper_bound = median() + 3* mad()
+
+```
