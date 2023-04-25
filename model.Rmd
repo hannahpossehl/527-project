@@ -90,7 +90,7 @@ gdp = gdp_pop_data[gdp_pop_data$Series.Name == "GDP (current US$)",'2010']
 pop = gdp_pop_data[gdp_pop_data$Series.Name == "Population, total",'2010']
 gdp_data_2010 = gdp[1:193,]
 pop_data_2010 = pop[1:193,]
-gdp_pop = data.frame(gdp_data, pop_data)
+#gdp_pop = data.frame(gdp_data, pop_data)
 ```
 
 ```{r}
@@ -243,6 +243,27 @@ ggplot(y_15, aes(x=as.numeric(Time), y = value))+
 
 ```
 
+```{r}
+library(ForeCA)
+library(forecast)
+cleaned_data
+y_15_train = cleaned_data[cleaned_data$Category=="SHARE.RE.IN.ELECTRICITY",c(1,3:23)]
+y_15_test = cleaned_data[cleaned_data$Category=="SHARE.RE.IN.ELECTRICITY",c(1,24:28)]
+y_15_train_brazil = y_15_train[y_15_train$Country.Name=="Brazil",]
+y_15_test = cleaned_data[cleaned_data$Category=="SHARE.RE.IN.ELECTRICITY",c(1,24:28)]
+head(y_15)
+x_15 = cleaned_data[cleaned_data$Category!="SHARE.RE.IN.ELECTRICITY",c(1,3:23)]
+x_15_brazil = x_15[x_15$Country.Name=="Brazil",]
+head(x_15)
+model = tslm(y_15_train_brazil~x_15_brazil)
+```
+
+```{r}
+cluster_large = kmeans_clusters[kmeans_clusters$cluster == "15",]
+
+
+
+```
 ## Cluster 10
 ```{r}
 cluster_10 = regress[regress$Country.Name == "Colombia"|regress$Country.Name == "Denmark"|regress$Country.Name == "Greece"|regress$Country.Name == "Thailand"|regress$Country.Name == "United Arab Emirates",]
