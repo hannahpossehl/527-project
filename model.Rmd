@@ -195,6 +195,20 @@ kmeans_clusters[kmeans_clusters$cluster == "19",]
 kmeans_clusters[kmeans_clusters$cluster == "20",]
 ```
 
+## Using US for linear regression model using lm()
+```{r}
+US_lm <- regressors_join[regressors_join$Country.Name == "United States",]
+US_lm <- na.omit(US_lm)
+US_lm <- t(US_lm)
+US_lm <- US_lm[-c(1),]
+colnames(US_lm) <- US_lm[1,]
+US_lm <- US_lm[-c(1),]
+US_lm <- as.data.frame(US_lm)
+
+US_model <- lm(data = US_lm, SHARE.RE.IN.ELECTRICITY ~ .)
+
+```
+
 ## Removing NA rows
 ```{r}
 library(dplyr)
