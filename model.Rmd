@@ -224,16 +224,46 @@ US_model$coefficients
 #Only selecting rows with correlation higher than .5 and not with all the same value
 US_lm_next <- US_lm[,colSums(US_lm) != 0 & colSums(US_lm) != 2600]
 mat_cor_1 <- cor(US_lm_next)
-mat_keep_cols <- c("Renewable.electricity.output....of.total.electricity.output.", "SHARE.RE.IN.ELECTRICITY", "REN.ELECTRICITY.OUTPUT", "Population.ages.65.and.above....of.total.population.", "Renewable.energy.consumption....of.total.final.energy.consumption.", "SHARE.TOTAL.RE.IN.TFEC", "Energy.imports..net....of.energy.use.", "Fertility.rate..total..births.per.woman.", "Energy.use..kg.of.oil.equivalent.per.capita.", "CO2.emissions..metric.tons.per.capita.", "Fossil.fuel.energy.consumption....of.total.","Electricity.production.from.coal.sources....of.total.","Level.of.water.stress..freshwater.withdrawal.as.a.proportion.of.available.freshwater.resources", "Annual.freshwater.withdrawals..total....of.internal.resources.", "Labor.force.participation.rate..total....of.total.population.ages.15.64...modeled.ILO.estimate.")
-US_lm_cleaned <- US_lm_next[,colnames(US_lm_next) %in% mat_keep_cols]
-US_lm_cleaned <- scale(US_lm_cleaned)
-US_lm_cleaned <- as.data.frame(US_lm_cleaned)
-cor_mat_cleaned <- cor(US_lm_cleaned)
-heatmap(as.matrix(US_lm_cleaned))
+mat_keep_cols_0.5 <- c("SHARE.RE.IN.ELECTRICITY", "REN.ELECTRICITY.OUTPUT", "Population.ages.65.and.above....of.total.population.", "Renewable.energy.consumption....of.total.final.energy.consumption.", "SHARE.TOTAL.RE.IN.TFEC", "Energy.imports..net....of.energy.use.", "Fertility.rate..total..births.per.woman.", "Energy.use..kg.of.oil.equivalent.per.capita.", "CO2.emissions..metric.tons.per.capita.", "Fossil.fuel.energy.consumption....of.total.","Electricity.production.from.coal.sources....of.total.","Level.of.water.stress..freshwater.withdrawal.as.a.proportion.of.available.freshwater.resources", "Annual.freshwater.withdrawals..total....of.internal.resources.", "Labor.force.participation.rate..total....of.total.population.ages.15.64...modeled.ILO.estimate.")
+US_lm_cleaned_0.5 <- US_lm_next[,colnames(US_lm_next) %in% mat_keep_cols_0.5]
+US_lm_cleaned_0.5 <- scale(US_lm_cleaned_0.5)
+US_lm_cleaned_0.5 <- as.data.frame(US_lm_cleaned_0.5)
+cor_mat_cleaned_0.5 <- cor(US_lm_cleaned_0.5)
+heatmap(as.matrix(US_lm_cleaned_0.5))
 
-US_model_cleaned <- lm(data = US_lm_cleaned, SHARE.RE.IN.ELECTRICITY ~ .)
-summary(US_model_cleaned)
-US_model_cleaned$coefficients
+US_model_cleaned_0.5 <- lm(data = US_lm_cleaned_0.5, SHARE.RE.IN.ELECTRICITY ~ .)
+summary(US_model_cleaned_0.5)
+US_model_cleaned_0.5$coefficients
+
+library(caTools)
+sample_0.5 <- sample.split(US_lm_cleaned_0.5$SHARE.RE.IN.ELECTRICITY, SplitRatio = 0.7)
+train_0.5  <- subset(US_lm_cleaned_0.5, sample == TRUE)
+test_0.5   <- subset(US_lm_cleaned_0.5, sample == FALSE)
+#Residual st error is .1294
+
+### Same as above except using a threshold for correlation of 0.75
+mat_keep_cols_0.75 <- c("SHARE.RE.IN.ELECTRICITY", "REN.ELECTRICITY.OUTPUT", "Population.ages.65.and.above....of.total.population.", "Energy.imports..net....of.energy.use.", "Fertility.rate..total..births.per.woman.")
+US_lm_cleaned_0.75 <- US_lm_next[,colnames(US_lm_next) %in% mat_keep_cols_0.75]
+US_lm_cleaned_0.75 <- scale(US_lm_cleaned_0.75)
+US_lm_cleaned_0.75 <- as.data.frame(US_lm_cleaned_0.75)
+cor_mat_cleaned_0.75 <- cor(US_lm_cleaned_0.75)
+heatmap(as.matrix(US_lm_cleaned_0.75))
+
+US_model_cleaned_0.75 <- lm(data = US_lm_cleaned_0.75, SHARE.RE.IN.ELECTRICITY ~ .)
+summary(US_model_cleaned_0.75)
+US_model_cleaned_0.75$coefficients
+
+sample_0.75 <- sample.split(US_lm_cleaned_0.75$SHARE.RE.IN.ELECTRICITY, SplitRatio = 0.7)
+train_0.75  <- subset(US_lm_cleaned_0.75, sample == TRUE)
+test_0.75   <- subset(US_lm_cleaned_0.75, sample == FALSE)
+#Residual st. error increased from 0.5 model to 0.1513 although the variables were more correlated to the target variable
+
+#Predicting target variable using train and test data
+pred_train_0.5 <- predict(US_model_cleaned_0.5, newdata = train_0.5)
+pred_test_0.5 <- predict(US_model_cleaned_0.5, newdata = test_0.5)
+
+pred_train_0.75 <- predict(US_model_cleaned_0.75, newdata = train_0.75)
+pred_train_0.75 <- predict(US_model_cleaned_0.75, newdata = test_0.75)
 ```
 
 ## Removing NA rows
