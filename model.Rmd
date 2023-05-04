@@ -204,15 +204,36 @@ US_lm <- t(US_lm)
 US_lm <- US_lm[-c(1),]
 colnames(US_lm) <- US_lm[1,]
 US_lm <- US_lm[-c(1),]
-US_lm <- as.numeric(US_lm)
-US_lm_norm <- scale(US_lm)
-as.numeric(US_lm[2:26,2:43])
-heatmap(as.matrix(US_lm))
+#US_lm <- as.numeric(US_lm)
+#US_lm_norm <- scale(US_lm)
+#as.numeric(US_lm[2:26,2:43])
 
 US_lm <- as.data.frame(US_lm)
 US_lm <- as.data.frame(lapply(US_lm, as.numeric))
 
+heatmap(as.matrix(US_lm))
+mat_cor <- cor(US_lm)
+
+#Delete columns with same values and those with correlations between -.2 and .2. Keep track
+# of # of columns deleted
+
 US_model <- lm(data = US_lm, SHARE.RE.IN.ELECTRICITY ~ .)
+summary(US_model)
+US_model$coefficients
+
+#Only selecting rows with correlation higher than .5 and not with all the same value
+US_lm_next <- US_lm[,colSums(US_lm) != 0 & colSums(US_lm) != 2600]
+mat_cor_1 <- cor(US_lm_next)
+mat_keep_cols <- c("Renewable.electricity.output....of.total.electricity.output.", "SHARE.RE.IN.ELECTRICITY", "REN.ELECTRICITY.OUTPUT", "Population.ages.65.and.above....of.total.population.", "Renewable.energy.consumption....of.total.final.energy.consumption.", "SHARE.TOTAL.RE.IN.TFEC", "Energy.imports..net....of.energy.use.", "Fertility.rate..total..births.per.woman.", "Energy.use..kg.of.oil.equivalent.per.capita.", "CO2.emissions..metric.tons.per.capita.", "Fossil.fuel.energy.consumption....of.total.","Electricity.production.from.coal.sources....of.total.","Level.of.water.stress..freshwater.withdrawal.as.a.proportion.of.available.freshwater.resources", "Annual.freshwater.withdrawals..total....of.internal.resources.", "Labor.force.participation.rate..total....of.total.population.ages.15.64...modeled.ILO.estimate.")
+US_lm_cleaned <- US_lm_next[,colnames(US_lm_next) %in% mat_keep_cols]
+US_lm_cleaned <- scale(US_lm_cleaned)
+US_lm_cleaned <- as.data.frame(US_lm_cleaned)
+cor_mat_cleaned <- cor(US_lm_cleaned)
+heatmap(as.matrix(US_lm_cleaned))
+
+US_model_cleaned <- lm(data = US_lm_cleaned, SHARE.RE.IN.ELECTRICITY ~ .)
+summary(US_model_cleaned)
+US_model_cleaned$coefficients
 ```
 
 ## Removing NA rows
