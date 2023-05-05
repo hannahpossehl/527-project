@@ -231,15 +231,21 @@ US_lm_cleaned_0.5 <- as.data.frame(US_lm_cleaned_0.5)
 cor_mat_cleaned_0.5 <- cor(US_lm_cleaned_0.5)
 heatmap(as.matrix(US_lm_cleaned_0.5))
 
-US_model_cleaned_0.5 <- lm(data = US_lm_cleaned_0.5, SHARE.RE.IN.ELECTRICITY ~ .)
-summary(US_model_cleaned_0.5)
-US_model_cleaned_0.5$coefficients
-
 library(caTools)
 sample_0.5 <- sample.split(US_lm_cleaned_0.5$SHARE.RE.IN.ELECTRICITY, SplitRatio = 0.7)
 train_0.5  <- subset(US_lm_cleaned_0.5, sample == TRUE)
 test_0.5   <- subset(US_lm_cleaned_0.5, sample == FALSE)
-#Residual st error is .1294
+
+y_train_0.5 <- train_0.5$SHARE.RE.IN.ELECTRICITY
+x_train_0.5 <- cbind(train_0.5[,1], train_0.5[,2], train_0.5[,3], train_0.5[,4],train_0.5[,5], train_0.5[,6], train_0.5[,7], train_0.5[,8],train_0.5[,9], train_0.5[,10], train_0.5[,11], train_0.5[,12],train_0.5[,14])
+
+y_test_0.5 <- test_0.5$SHARE.RE.IN.ELECTRICITY
+x_test_0.5 <- cbind(test_0.5[,1], test_0.5[,2], test_0.5[,3], test_0.5[,4],test_0.5[,5], test_0.5[,6], test_0.5[,7], test_0.5[,8],test_0.5[,9], test_0.5[,10], test_0.5[,11], test_0.5[,12],test_0.5[,14])
+
+US_model_cleaned_0.5 <- lm(y_train_0.5 ~ x_train_0.5)
+summary(US_model_cleaned_0.5)
+US_model_cleaned_0.5$coefficients
+
 
 ### Same as above except using a threshold for correlation of 0.75
 mat_keep_cols_0.75 <- c("SHARE.RE.IN.ELECTRICITY", "REN.ELECTRICITY.OUTPUT", "Population.ages.65.and.above....of.total.population.", "Energy.imports..net....of.energy.use.", "Fertility.rate..total..births.per.woman.")
@@ -249,21 +255,39 @@ US_lm_cleaned_0.75 <- as.data.frame(US_lm_cleaned_0.75)
 cor_mat_cleaned_0.75 <- cor(US_lm_cleaned_0.75)
 heatmap(as.matrix(US_lm_cleaned_0.75))
 
-US_model_cleaned_0.75 <- lm(data = US_lm_cleaned_0.75, SHARE.RE.IN.ELECTRICITY ~ .)
-summary(US_model_cleaned_0.75)
-US_model_cleaned_0.75$coefficients
-
 sample_0.75 <- sample.split(US_lm_cleaned_0.75$SHARE.RE.IN.ELECTRICITY, SplitRatio = 0.7)
 train_0.75  <- subset(US_lm_cleaned_0.75, sample == TRUE)
 test_0.75   <- subset(US_lm_cleaned_0.75, sample == FALSE)
-#Residual st. error increased from 0.5 model to 0.1513 although the variables were more correlated to the target variable
+
+train_0.75 <- as.data.frame(train_0.75)
+
+y_train_0.75 <- train_0.75$SHARE.RE.IN.ELECTRICITY
+x_train_0.75 <- cbind(train_0.75[,1], train_0.75[,2], train_0.75[,3], train_0.75[,4])
+
+y_test_0.75 <- test_0.75$SHARE.RE.IN.ELECTRICITY
+x_test_0.75 <- cbind(test_0.75[,1], test_0.75[,2], test_0.75[,3], test_0.75[,4])
+
+
+US_model_cleaned_0.75 <- lm(y_train_0.75 ~ x_train_0.75)
+summary(US_model_cleaned_0.75)
+US_model_cleaned_0.75$coefficients
+
 
 #Predicting target variable using train and test data
-pred_train_0.5 <- predict(US_model_cleaned_0.5, newdata = train_0.5)
-pred_test_0.5 <- predict(US_model_cleaned_0.5, newdata = test_0.5)
+pred_train_0.5 <- predict(US_model_cleaned_0.5, newdata = as.data.frame(train_0.5))
+pred_test_0.5 <- predict(US_model_cleaned_0.5, newdata = as.data.frame(test_0.5))
 
-pred_train_0.75 <- predict(US_model_cleaned_0.75, newdata = train_0.75)
-pred_train_0.75 <- predict(US_model_cleaned_0.75, newdata = test_0.75)
+pred_train_0.75 <- predict(US_model_cleaned_0.75, newdata = as.data.frame(x_train_0.75))
+pred_test_0.75 <- predict(US_model_cleaned_0.75, newdata = as.data.frame(x_test_0.75))
+
+
+#Finding errors for 0.5
+MSE_train_0.5 <- mean((pred_train_0.5 - y_train_0.5)^2)
+MSE_test_0.5 <- mean((pred_test_0.5 - y_test_0.5)^2)
+
+#Finding errors for 0.75
+MSE_train_0.75 <- mean((pred_train_0.75 - y_train_0.75)^2)
+MSE_test_0.75 <- mean((pred_test_0.75 - y_test_0.75)^2)
 ```
 
 ## Removing NA rows
