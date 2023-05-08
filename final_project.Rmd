@@ -1,0 +1,659 @@
+---
+title: "Final Project"
+author: "Hannah Possehl and Gus Christensen"
+date: "2023-05-08"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+In total using 193 countries.
+### Loading Data
+```{r echo = FALSE}
+esg_data = readxl::read_excel("C:/Users/hanna/OneDrive/Documents/R/Countries_Environment_Social_and_Governance_(ESG)_Data.xlsx", na = "..")
+# above data last updated Feb. 9th 2023
+# no Kosovo, Palestine, Taiwan, Vatican City
+cor_years = esg_data[,c(1,3,12:37)]
+rev = cor_years[, c(1,2,ncol(cor_years):3)]
+head(rev)
+colnames(rev) = c("Country.Name", "Category", "1990", "1991", "1992", "1993", "1994", "1995", "1996", "1997", "1998", "1999", "2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015")
+head(rev)
+regressors = rev
+```
+
+```{r, include = FALSE}
+esg_data = data.frame(esg_data)
+sue_data = readxl::read_excel("C:/Users/hanna/OneDrive/Documents/R/Sustainable_Energy_for_All.xlsx", col_names = c("Country.Name", "Country.code", "Time", "Time.code", "ACCESS.CFT.TOT", "ACCESS.ELECTRICITY.RURAL", "ACCESS.ELECTRICITY.TOT", "ACCESS.ELECTRICITY.URBAN", "PRIMARY.ENERGY.INTENSITY", "REN.ELECTRICITY.OUTPUT", "SHARE.RE.IN.ELECTRICITY", "RE.CONSUMPTION", "SHARE.TOTAL.RE.IN.TFEC", "TOTAL.ELECTRICITY.OUTPUT", "TOTAL.FINAL.ENERGY.CONSUM]"), col_types = c("text", "text", "numeric", "text", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric"))
+# has only 195 countries does not have data for Palestine and Vatican City
+sefa_data = data.frame(sue_data)
+sefa = sefa_data[2:6999,]
+perc = !is.na(sefa$SHARE.RE.IN.ELECTRICITY)
+nonna = sefa[perc,]
+Y = data.frame(nonna$Country.Name, nonna$Time, nonna$SHARE.RE.IN.ELECTRICITY)
+#temp = tibble::rownames_to_column(nonna, "Time")
+#head(temp)
+```
+
+
+### Combining the two datasets
+```{r}
+library(reshape)
+library(reshape2)
+head(nonna)
+colnames(nonna)
+cast_data = melt(nonna[,c(1,3,5:15)], id = c("Country.Name", "Time"), variable.name="Category")
+head(cast_data)
+```
+
+```{r}
+c_data = dcast(cast_data,Country.Name+Category ~ Time, value.var = "value")
+head(c_data)
+```
+
+```{r}
+regressors_join = rbind(regressors, c_data)
+head(regressors_join)
+tail(regressors_join)
+```
+
+### Checking for NA values
+```{r}
+years = c('1990','1991','1992','1993','1994','1995','1996','1997','1998','1999','2000','2001','2002','2003','2004','2005','2006','2007','2008','2009','2010','2011','2012','2013','2014','2015')
+na_by_years = c()
+for (year in years){
+  na_by_years = append(na_by_years, sum(is.na(regressors_join[,year])))
+}
+na_by_years
+```
+
+```{r}
+library(dplyr)
+rowsums = rowSums(is.na(regressors_join))
+#rowsums[rowsums>=10]
+empty_rows = which(rowsums==26)
+empty_rows
+sum(is.na(regressors_join))
+ empty_data = regressors_join[empty_rows,]
+regressors_join[empty_rows,]
+n_distinct(regressors_join[empty_rows,]$Category)
+unique(regressors_join[empty_rows,]$Category)
+n_distinct(regressors_join[empty_rows,]$Country.Name)
+unique(regressors_join[empty_rows,]$Country.Name)
+```
+
+## Outlier Detection
+
+```{r}
+agland = cleaned_data[cleaned_data$Category == "Agricultural land (% of land area)",]
+countries = agland$Country.Name
+num_countries = length(t(agland[,"Country.Name"]))
+outliers = data.frame(ncol = num_countries, nrows = 0)
+colnames(outliers) = agland[,"Country.Name"]
+sum = 0
+outliers_q = data.frame(ncol = num_countries, nrows = 0)
+colnames(outliers_q) = agland[,"Country.Name"]
+sum_q = 0
+
+for (country in countries){
+  x = unlist(agland[agland$Country.Name == country,], use.names = FALSE)
+  X = as.numeric(x[3:28])
+  ## IQR
+  quantiles = quantile(X, na.rm = TRUE)
+  first_q = quantiles["25%"]
+  third_q = quantiles["75%"]
+  diff_q = third_q - first_q
+  upper_bound_q = third_q + 1.5*diff_q
+  lower_bound_q = first_q - 1.5*diff_q
+  outliers_q[,country] = t(which(X < lower_bound_q | X > upper_bound_q))
+  sum_q = sum_q + length(outliers_q[,country])
+ 
+}
+print(sum)
+print(sum_q)
+```
+
+### Creating Country Clusters
+```{r}
+library(ggplot2)
+gdp_pop_data <- readxl::read_excel("gdp_pop_data.xlsx", col_types = c("text", "text", "text", "text", "numeric", "numeric", "numeric"))
+colnames(gdp_pop_data) <- c("Country.Name", "Country.Code", "Series.Name", "Series.Code", "2005", "2010", "2015")
+head(gdp_pop_data)
+gdp = gdp_pop_data[gdp_pop_data$Series.Name == "GDP (current US$)",'2010']
+pop = gdp_pop_data[gdp_pop_data$Series.Name == "Population, total",'2010']
+gdp_data_2010 = gdp[1:193,]
+pop_data_2010 = pop[1:193,]
+#gdp_pop = data.frame(gdp_data, pop_data)
+```
+
+```{r}
+#2010 missing data for Somalia and North Korean only
+cap_2010 = gdp_pop_data[gdp_pop_data$Series.Name == "GDP per capita (current US$)",'2010']
+gdp_pop_cap_2010 = data.frame(gdp_data_2010, pop_data_2010, cap_2010)
+kmeans = kmeans(gdp_pop_cap_2010[complete.cases(gdp_pop_cap_2010),], centers = 20, nstart = 20)
+as.data.frame(table(kmeans$cluster))
+```
+
+```{r}
+countries = unique(gdp_pop_data[,"Country.Name"])
+#countries[countries!="Somalia"&countries != "Korea, Dem. People's Rep."]
+countries[countries=="United States"]= "USA"
+countries[countries=="Venezuela, RB"]= "Venezuela"
+countries[countries=="Yemen, Rep."]= "Yemen"
+countries[countries=="United Kingdom"]= "UK"
+countries[countries=="Gambia, The"]= "Gambia"
+countries[countries=="Bahamas, The"]= "Bahamas"
+countries[countries=="Brunei Darussalam"]= "Brunei"
+countries[countries=="Cabo Verde"]= "Cape Verde"
+countries[countries=="Congo, Dem. Rep."]= "Democratic Republic of the Congo"
+countries[countries=="Congo, Rep."]= "Republic of Congo"
+countries[countries=="Cote d'Ivoire"]= "Ivory Coast"
+countries[countries=="Czechia"]= "Czech Republic"
+countries[countries=="Egypt, Arab Rep."]= "Egypt"
+countries[countries=="Eswatini"]= "Swaziland"
+countries[countries=="Korea, Rep."]= "South Korea"
+countries[countries=="Kyrgyz Republic"]= "Kyrgyzstan"
+countries[countries=="Lao PDR"]= "Laos"
+countries[countries=="Russian Federation"]= "Russia"
+countries[countries=="Slovak Republic"]= "Slovakia"
+countries[countries=="Syrian Arab Republic"]= "Syria"
+countries[countries=="Iran, Islamic Rep."]= "Iran"
+countries[countries=="Turkiye"]= "Turkey"
+cluster = kmeans$cluster
+for(i in 1:length(cluster)){
+  if(nchar(cluster[i])<2){
+      cluster[i] = paste("0", cluster[i], sep = "")    
+  }
+}
+kmeans_clusters = cbind(countries[countries!="Somalia"&countries != "Korea, Dem. People's Rep."], cluster)
+kmeans_clusters = data.frame(kmeans_clusters)
+print(kmeans_clusters)
+```
+
+```{r}
+wss = c()
+for(k in 5:35){
+  kmeans_k = kmeans(gdp_pop_cap_2010[complete.cases(gdp_pop_cap_2010),], centers = k, nstart = 10)
+  wss = append(wss, kmeans_k$tot.withinss)
+  if(k==8){
+    print(data.frame(table(kmeans_k$cluster)))
+  }
+}
+x = 5:35
+print(wss)
+plot(x, wss)
+```
+
+## Mapping clusters
+```{r}
+#library(ggmaps)
+library(stringr)
+library(maps)
+library(mapdata)
+#unique(map_data("world")$region)
+#world = fortify()
+gg =  ggplot()
+gg = gg + geom_map(data = map_data("world"), map = map_data("world"), aes(x=long, y=lat, map_id=region), fill = "white")
+gg = gg + geom_map(data = kmeans_clusters, map = map_data("world"), aes(map_id=V1, fill = cluster))
+gg = gg + scale_fill_manual(values = c("#999999", "#E69F00", "#56B4E9", "#0000FF", "#9933FF", "#CC99FF", "#FF66FF", "#FF3399", "#99004C", "#00FFFF", "#00994c", "#33FF33", "#ffff00", "#ffb266", "#ff6666", "#ff0000", "#660000", "#006666", "#003366", "#404040" ))
+gg = gg + labs(colour="Cluster")
+gg = gg + guides(fill = guide_legend(ncol=2))
+#gg = gg + theme(legend.position = "bottom")
+gg
+```
+
+```{r}
+kmeans_clusters[kmeans_clusters$cluster == "01",]
+kmeans_clusters[kmeans_clusters$cluster == "02",]
+kmeans_clusters[kmeans_clusters$cluster == "03",]
+kmeans_clusters[kmeans_clusters$cluster == "04",]
+kmeans_clusters[kmeans_clusters$cluster == "05",]
+kmeans_clusters[kmeans_clusters$cluster == "06",]
+kmeans_clusters[kmeans_clusters$cluster == "07",]
+kmeans_clusters[kmeans_clusters$cluster == "08",]
+kmeans_clusters[kmeans_clusters$cluster == "09",]
+kmeans_clusters[kmeans_clusters$cluster == "10",]
+kmeans_clusters[kmeans_clusters$cluster == "11",]
+kmeans_clusters[kmeans_clusters$cluster == "12",]
+kmeans_clusters[kmeans_clusters$cluster == "13",]
+kmeans_clusters[kmeans_clusters$cluster == "14",]
+kmeans_clusters[kmeans_clusters$cluster == "15",]
+kmeans_clusters[kmeans_clusters$cluster == "16",]
+kmeans_clusters[kmeans_clusters$cluster == "17",]
+kmeans_clusters[kmeans_clusters$cluster == "18",]
+kmeans_clusters[kmeans_clusters$cluster == "19",]
+kmeans_clusters[kmeans_clusters$cluster == "20",]
+```
+
+## Removing NA rows
+```{r}
+library(dplyr)
+#regressors_join
+regress = regressors_join[regressors_join$Category!="Mammal species, threatened"&regressors_join$Category!="Proportion of bodies of water with good ambient water quality"&regressors_join$Category!="Terrestrial and marine protected areas (% of total territorial area)",]
+
+cluster_15 = regress[regress$Country.Name == "Brazil"|regress$Country.Name == "France"|regress$Country.Name == "Germany"|regress$Country.Name == "Italy"|regress$Country.Name == "United Kingdom",]
+head(cluster_15)
+rowsums_15 = rowSums(is.na(cluster_15))
+#rowsums_15[rowsums_15>=10]
+empty_rows_15 = which(rowsums_15==26)
+mostly_empty_rows_15 =  which(rowsums_15>=6)
+#empty_rows_15
+sum(is.na(cluster_15))
+empty_data = cluster_15[empty_rows_15,]
+mostly_empty_data = cluster_15[mostly_empty_rows_15,]
+empty_data
+n_distinct(empty_data$Category)
+unique(empty_data$Category)
+n_distinct(empty_data$Country.Name)
+unique(empty_data$Country.Name)
+
+n_distinct(mostly_empty_data$Category)
+unique(mostly_empty_data$Category)
+empty_cats = unique(mostly_empty_data$Category)
+cleaned_data = cluster_15
+for(category in empty_cats){
+  cleaned_data = cleaned_data[cleaned_data$Category!= category,]
+}
+n_distinct(cleaned_data$Category)
+sum(is.na(cleaned_data))
+```
+
+## Plotting target variable for cluster 15
+```{r}
+library(reshape)
+library(reshape2)
+cluster_15_y = cleaned_data[cleaned_data$Category == "SHARE.RE.IN.ELECTRICITY",]
+cluster_15_y
+y_15 = melt(cluster_15_y[,c(1, 3:28)], id = c("Country.Name"), variable.name="Time")
+y_15 = y_15[order(y_15$Country.Name),]
+y_15
+ggplot(y_15, aes(x=as.numeric(Time), y = value))+
+  geom_line(aes(linetype = Country.Name))+
+  labs(x="Year", y="% renewable energy of total energy production", title="Target Variable for cluster 15")
+
+```
+
+## Cluster 10
+```{r}
+cluster_10 = regress[regress$Country.Name == "Colombia"|regress$Country.Name == "Denmark"|regress$Country.Name == "Greece"|regress$Country.Name == "Thailand"|regress$Country.Name == "United Arab Emirates",]
+head(cluster_10)
+rowsums_10 = rowSums(is.na(cluster_10))
+empty_rows_10 = which(rowsums_10==26)
+mostly_empty_rows_10 =  which(rowsums_10>=6)
+#empty_rows_15
+sum(is.na(cluster_10))
+empty_data_10 = cluster_10[empty_rows_10,]
+mostly_empty_data_10 = cluster_10[mostly_empty_rows_10,]
+empty_data_10
+n_distinct(empty_data_10$Category)
+unique(empty_data_10$Category)
+n_distinct(empty_data_10$Country.Name)
+unique(empty_data_10$Country.Name)
+
+n_distinct(mostly_empty_data_10$Category)
+unique(mostly_empty_data_10$Category)
+empty_cats_10 = unique(mostly_empty_data_10$Category)
+cleaned_data_10 = cluster_10
+for(category in empty_cats_10){
+  cleaned_data_10 = cleaned_data_10[cleaned_data_10$Category!= category,]
+}
+n_distinct(cleaned_data_10$Category)
+sum(is.na(cleaned_data_10))
+```
+
+## Plotting target variable for cluster 10
+```{r}
+library(reshape)
+library(reshape2)
+cluster_10_y = cleaned_data_10[cleaned_data_10$Category == "SHARE.RE.IN.ELECTRICITY",]
+cluster_10_y
+y_10 = melt(cluster_10_y[,c(1, 3:28)], id = c("Country.Name"), variable.name="Time")
+y_10 = y_10[order(y_15$Country.Name),]
+y_10
+ggplot(y_10, aes(x=as.numeric(Time), y = value))+
+  geom_line(aes(linetype = Country.Name))+
+  labs(x="Year", y="% renewable energy of total energy production", title="Target Variable for cluster 10")
+
+```
+
+## Continent clustering
+```{r}
+continent_data = read.csv("C:/Users/hanna/OneDrive/Documents/R/continents2.csv")
+head(continent_data[,c(1,6,7)])
+
+continent_data[continent_data$ï..name == "Bahamas","ï..name"]= "Bahamas, The"
+continent_data[continent_data$ï..name == "Bosnia And Herzegovina","ï..name"]= "Bosnia and Herzegovina"
+continent_data[continent_data$ï..name == "CÃ´te D'Ivoire","ï..name"]= "Cote d'Ivoire"
+continent_data[continent_data$ï..name == "Congo","ï..name"]= "Congo, Rep."
+continent_data[continent_data$ï..name == "Congo (Democratic Republic Of The)","ï..name"]= "Congo, Dem. Rep."
+continent_data[continent_data$ï..name == "Czech Republic","ï..name"]= "Czechia"
+continent_data[continent_data$ï..name == "Egypt","ï..name"]= "Egypt, Arab Rep."
+continent_data[continent_data$ï..name == "Gambia","ï..name"]= "Gambia, The"
+continent_data[continent_data$ï..name == "Guinea Bissau","ï..name"]= "Guinea-Bissau"
+continent_data[continent_data$ï..name == "Iran","ï..name"]= "Iran, Islamic Rep."
+continent_data[continent_data$ï..name == "Korea, Republic of","ï..name"]= "Korea, Rep."
+continent_data[continent_data$ï..name == "Kyrgyzstan","ï..name"]= "Kyrgyz Republic"
+continent_data[continent_data$ï..name == "Laos","ï..name"]= "Lao PDR"
+continent_data[continent_data$ï..name == "Micronesia (Federated States of)","ï..name"]= "Micronesia, Fed. Sts."
+continent_data[continent_data$ï..name == "Macedonia","ï..name"]= "North Macedonia"
+continent_data[continent_data$ï..name == "Russia","ï..name"]= "Russian Federation"
+continent_data[continent_data$ï..name == "Saint Kitts and Nevis","ï..name"]= "St. Kitts and Nevis"
+continent_data[continent_data$ï..name == "Saint Lucia","ï..name"]= "St. Lucia"
+continent_data[continent_data$ï..name == "Saint Vincent and the Grenadines","ï..name"]= "St. Vincent and the Grenadines"
+continent_data[continent_data$ï..name == "Slovakia","ï..name"]= "Slovak Republic"
+continent_data[continent_data$ï..name == "Syria","ï..name"]= "Syrian Arab Republic"
+continent_data[continent_data$ï..name == "Turkey","ï..name"]= "Turkiye"
+continent_data[continent_data$ï..name == "Venezuela","ï..name"]= "Venezuela, RB"
+continent_data[continent_data$ï..name == "Yemen","ï..name"]= "Yemen, Rep."
+head(gdp_pop_data)
+cap_2010 = gdp_pop_data[gdp_pop_data$Series.Name == "GDP per capita (current US$)",'2010']
+gdp_pop_cap_country = data.frame(unique(gdp_pop_data$Country.Name), gdp_data_2010, pop_data_2010, cap_2010)
+head(gdp_pop_cap_country)
+clustering_continents = merge(gdp_pop_cap_country, continent_data[,c(1,6,7)], by.x = "unique.gdp_pop_data.Country.Name.", by.y = "ï..name")
+clustering_continents
+```
+
+## Encoding categorical variable
+```{r}
+#library(caret)
+cont_clust = cbind(clustering_continents[,c(2:4)], model.matrix(~0+clustering_continents$region))
+cont_clust
+kmeans_cont = kmeans(cont_clust[complete.cases(cont_clust),], centers = 20, nstart = 20)
+as.data.frame(table(kmeans_cont$cluster))
+```
+
+```{r}
+countries = unique(gdp_pop_data[,"Country.Name"])
+cluster_cont = kmeans_cont$cluster
+for(i in 1:length(cluster_cont)){
+  if(nchar(cluster_cont[i])<2){
+      cluster_cont[i] = paste("0", cluster_cont[i], sep = "")    
+  }
+}
+kmeans_cont_clusters = cbind(countries[countries!="Somalia"&countries != "Korea, Dem. People's Rep."], cluster_cont)
+kmeans_cont_clusters = data.frame(kmeans_cont_clusters)
+print(kmeans_cont_clusters)
+```
+
+```{r}
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "01",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "02",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "03",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "04",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "05",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "06",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "07",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "08",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "09",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "10",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "11",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "12",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "13",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "14",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "15",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "16",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "17",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "18",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "19",]
+kmeans_cont_clusters[kmeans_cont_clusters$cluster == "20",]
+```
+
+```{r}
+wss = c()
+for(k in 1:35){
+  kmeans_k = kmeans(cont_clust[complete.cases(cont_clust),], centers = k, nstart = 5)
+  wss = append(wss, kmeans_k$tot.withinss)
+  if(k==8){
+    print(data.frame(table(kmeans_k$cluster)))
+  }
+}
+x = 1:35
+print(wss)
+plot(x, wss)
+```
+
+## Subregions
+## Encoding categorical variable
+```{r}
+#library(caret)
+cont_clust_2 = cbind(clustering_continents[,c(2:4)], model.matrix(~0+clustering_continents$sub.region))
+cont_clust_2
+kmeans_cont_2 = kmeans(scale(cont_clust_2[complete.cases(cont_clust_2),]), centers = 10, nstart = 10)
+as.data.frame(table(kmeans_cont_2$cluster))
+```
+
+```{r}
+countries = unique(gdp_pop_data[,"Country.Name"])
+cluster_cont_2 = kmeans_cont_2$cluster
+for(i in 1:length(cluster_cont_2)){
+  if(nchar(cluster_cont_2[i])<2){
+      cluster_cont_2[i] = paste("0", cluster_cont_2[i], sep = "")    
+  }
+}
+kmeans_cont_clusters_2 = cbind(countries[countries!="Somalia"&countries != "Korea, Dem. People's Rep."], cluster_cont_2)
+kmeans_cont_clusters_2 = data.frame(kmeans_cont_clusters_2)
+print(kmeans_cont_clusters_2)
+```
+
+```{r}
+wss = c()
+for(k in 1:35){
+  kmeans_k = kmeans(cont_clust_2[complete.cases(cont_clust_2),], centers = k, nstart = 5)
+  wss = append(wss, kmeans_k$tot.withinss)
+  if(k==8){
+    print(data.frame(table(kmeans_k$cluster)))
+  }
+}
+x = 1:35
+print(wss)
+plot(x, wss)
+```
+
+```{r}
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "01",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "02",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "03",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "04",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "05",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "06",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "07",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "08",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "09",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "10",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "11",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "12",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "13",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "14",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "15",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "16",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "17",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "18",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "19",]
+kmeans_cont_clusters_2[kmeans_cont_clusters_2$cluster == "20",]
+```
+
+## Auto regressive model
+```{r}
+#Trying ts()
+data = regress[complete.cases(regress),]
+all = data[data$Category=="SHARE.RE.IN.ELECTRICITY",c(1,3:28)]
+all_us = all[all$Country.Name=="United States",]
+all_us
+y_10 = melt(all_us, id = c("Country.Name"), variable.name="Time")
+print(y_10)
+us2010_ts = ts(y_10[c(1:20),c(3)], start = 1990, end = 2010)
+us2011_ts = ts(y_10[c(1:21),c(3)], start = 1990, end = 2011)
+us2012_ts = ts(y_10[c(1:22),c(3)], start = 1990, end = 2012)
+us2013_ts = ts(y_10[c(1:23),c(3)], start = 1990, end = 2013)
+us2014_ts = ts(y_10[c(1:23),c(3)], start = 1990, end = 2014)
+
+us_2011_ts = ts(y_10[c(21),c(3)], start = 2011)
+us_2012_ts = ts(y_10[c(22),c(3)], start = 2012)
+us_2013_ts = ts(y_10[c(23),c(3)], start = 2013)
+us_2014_ts = ts(y_10[c(24),c(3)], start = 2014)
+us_2015_ts = ts(y_10[c(25),c(3)], start = 2015)
+
+# Fit a linear model to the time series
+us_model_2010 = ar(us2010_ts)
+us_model_2011 = ar(us2011_ts)
+us_model_2012 = ar(us2012_ts)
+us_model_2013 = ar(us2013_ts)
+us_model_2014 = ar(us2014_ts)
+
+pred_2011 = predict(object = us_model_2010, newdata = us2010_ts, n.ahead = 5)
+pred_2012 = predict(object = us_model_2011, newdata = us2011_ts, n.ahead = 4)
+pred_2013 = predict(object = us_model_2012, newdata = us2012_ts, n.ahead = 3)
+pred_2014 = predict(object = us_model_2013, newdata = us2013_ts, n.ahead = 2)
+pred_2015 = predict(object = us_model_2014, newdata = us2014_ts, n.ahead = 1)
+
+pred_2011$pred
+pred_2012$pred
+pred_2013$pred
+pred_2014$pred
+pred_2015$pred
+
+(us_2011_ts-pred_2011$pred[1])
+(us_2012_ts-pred_2011$pred[2])
+(us_2013_ts-pred_2011$pred[3])
+(us_2014_ts-pred_2011$pred[4])
+(us_2015_ts-pred_2011$pred[5])
+
+(us_2012_ts-pred_2012$pred[1])
+(us_2013_ts-pred_2012$pred[2])
+(us_2014_ts-pred_2012$pred[3])
+(us_2015_ts-pred_2012$pred[4])
+
+(us_2013_ts-pred_2013$pred[1])
+(us_2014_ts-pred_2013$pred[2])
+(us_2015_ts-pred_2013$pred[3])
+
+(us_2014_ts-pred_2014$pred[1])
+(us_2015_ts-pred_2014$pred[2])
+
+(us_2015_ts-pred_2015$pred[1])
+```
+
+```{r}
+plot_2011 = c(us2010_ts, pred_2011$pred)
+s_pred.ts = ts(plot_2011, start = 1990, end = 2015) 
+plot(s_pred.ts, xlab = "Year", ylab = "% Renewable energy of total", main = "Predicted values for 2011-2015")
+```
+
+```{r}
+plot_2012 = c(us2011_ts, pred_2012$pred)
+s12_pred.ts = ts(plot_2012, start = 1990, end = 2015) 
+plot(s12_pred.ts, xlab = "Year", ylab = "% Renewable energy of total", main = "Predicted values for 2012-2015")
+```
+
+```{r}
+plot_2013 = c(us2012_ts, pred_2013$pred)
+s13_pred.ts = ts(plot_2013, start = 1990, end = 2015) 
+plot(s13_pred.ts, xlab = "Year", ylab = "% Renewable energy of total", main = "Predicted values for 2013-2015")
+```
+
+```{r}
+plot_2014 = c(us2013_ts, pred_2014$pred)
+s14_pred.ts = ts(plot_2014, start = 1990, end = 2015) 
+plot(s14_pred.ts, xlab = "Year", ylab = "% Renewable energy of total", main = "Predicted values for 2014-2015")
+```
+
+```{r}
+plot_2015 = c(us2014_ts, pred_2015$pred)
+s15_pred.ts = ts(plot_2015, start = 1990, end = 2015) 
+plot(s15_pred.ts, xlab = "Year", ylab = "% Renewable energy of total", main = "Predicted value for 2015")
+```
+
+## Using US for linear regression model using lm()
+```{r}
+US_lm <- regressors_join[regressors_join$Country.Name == "United States",]
+colSums(is.na(US_lm))
+US_lm <- na.omit(US_lm)
+US_lm <- t(US_lm)
+US_lm <- US_lm[-c(1),]
+colnames(US_lm) <- US_lm[1,]
+US_lm <- US_lm[-c(1),]
+#US_lm <- as.numeric(US_lm)
+#US_lm_norm <- scale(US_lm)
+#as.numeric(US_lm[2:26,2:43])
+
+US_lm <- as.data.frame(US_lm)
+US_lm <- as.data.frame(lapply(US_lm, as.numeric))
+
+heatmap(as.matrix(US_lm))
+mat_cor <- cor(US_lm)
+
+#Delete columns with same values and those with correlations between -.2 and .2. Keep track
+# of # of columns deleted
+
+US_model <- lm(data = US_lm, SHARE.RE.IN.ELECTRICITY ~ .)
+summary(US_model)
+US_model$coefficients
+
+#Only selecting rows with correlation higher than .5 and not with all the same value
+US_lm_next <- US_lm[,colSums(US_lm) != 0 & colSums(US_lm) != 2600]
+mat_cor_1 <- cor(US_lm_next)
+mat_keep_cols_0.5 <- c("SHARE.RE.IN.ELECTRICITY", "REN.ELECTRICITY.OUTPUT", "Population.ages.65.and.above....of.total.population.", "Renewable.energy.consumption....of.total.final.energy.consumption.", "SHARE.TOTAL.RE.IN.TFEC", "Energy.imports..net....of.energy.use.", "Fertility.rate..total..births.per.woman.", "Energy.use..kg.of.oil.equivalent.per.capita.", "CO2.emissions..metric.tons.per.capita.", "Fossil.fuel.energy.consumption....of.total.","Electricity.production.from.coal.sources....of.total.","Level.of.water.stress..freshwater.withdrawal.as.a.proportion.of.available.freshwater.resources", "Annual.freshwater.withdrawals..total....of.internal.resources.", "Labor.force.participation.rate..total....of.total.population.ages.15.64...modeled.ILO.estimate.")
+US_lm_cleaned_0.5 <- US_lm_next[,colnames(US_lm_next) %in% mat_keep_cols_0.5]
+US_lm_cleaned_0.5 <- scale(US_lm_cleaned_0.5)
+US_lm_cleaned_0.5 <- as.data.frame(US_lm_cleaned_0.5)
+cor_mat_cleaned_0.5 <- cor(US_lm_cleaned_0.5)
+heatmap(as.matrix(US_lm_cleaned_0.5))
+
+library(caTools)
+sample_0.5 <- sample.split(US_lm_cleaned_0.5$SHARE.RE.IN.ELECTRICITY, SplitRatio = 0.7)
+train_0.5  <- subset(US_lm_cleaned_0.5, sample == TRUE)
+test_0.5   <- subset(US_lm_cleaned_0.5, sample == FALSE)
+
+y_train_0.5 <- train_0.5$SHARE.RE.IN.ELECTRICITY
+x_train_0.5 <- cbind(train_0.5[,1], train_0.5[,2], train_0.5[,3], train_0.5[,4],train_0.5[,5], train_0.5[,6], train_0.5[,7], train_0.5[,8],train_0.5[,9], train_0.5[,10], train_0.5[,11], train_0.5[,12],train_0.5[,14])
+
+y_test_0.5 <- test_0.5$SHARE.RE.IN.ELECTRICITY
+x_test_0.5 <- cbind(test_0.5[,1], test_0.5[,2], test_0.5[,3], test_0.5[,4],test_0.5[,5], test_0.5[,6], test_0.5[,7], test_0.5[,8],test_0.5[,9], test_0.5[,10], test_0.5[,11], test_0.5[,12],test_0.5[,14])
+
+US_model_cleaned_0.5 <- lm(y_train_0.5 ~ x_train_0.5)
+summary(US_model_cleaned_0.5)
+US_model_cleaned_0.5$coefficients
+
+
+### Same as above except using a threshold for correlation of 0.75
+mat_keep_cols_0.75 <- c("SHARE.RE.IN.ELECTRICITY", "REN.ELECTRICITY.OUTPUT", "Population.ages.65.and.above....of.total.population.", "Energy.imports..net....of.energy.use.", "Fertility.rate..total..births.per.woman.")
+US_lm_cleaned_0.75 <- US_lm_next[,colnames(US_lm_next) %in% mat_keep_cols_0.75]
+US_lm_cleaned_0.75 <- scale(US_lm_cleaned_0.75)
+US_lm_cleaned_0.75 <- as.data.frame(US_lm_cleaned_0.75)
+cor_mat_cleaned_0.75 <- cor(US_lm_cleaned_0.75)
+heatmap(as.matrix(US_lm_cleaned_0.75))
+
+sample_0.75 <- sample.split(US_lm_cleaned_0.75$SHARE.RE.IN.ELECTRICITY, SplitRatio = 0.7)
+train_0.75  <- subset(US_lm_cleaned_0.75, sample == TRUE)
+test_0.75   <- subset(US_lm_cleaned_0.75, sample == FALSE)
+
+train_0.75 <- as.data.frame(train_0.75)
+
+y_train_0.75 <- train_0.75$SHARE.RE.IN.ELECTRICITY
+x_train_0.75 <- cbind(train_0.75[,1], train_0.75[,2], train_0.75[,3], train_0.75[,4])
+
+y_test_0.75 <- test_0.75$SHARE.RE.IN.ELECTRICITY
+x_test_0.75 <- cbind(test_0.75[,1], test_0.75[,2], test_0.75[,3], test_0.75[,4])
+
+
+US_model_cleaned_0.75 <- lm(y_train_0.75 ~ x_train_0.75)
+summary(US_model_cleaned_0.75)
+US_model_cleaned_0.75$coefficients
+
+
+#Predicting target variable using train and test data
+pred_train_0.5 <- predict(US_model_cleaned_0.5, newdata = as.data.frame(train_0.5))
+pred_test_0.5 <- predict(US_model_cleaned_0.5, newdata = as.data.frame(test_0.5))
+
+pred_train_0.75 <- predict(US_model_cleaned_0.75, newdata = as.data.frame(x_train_0.75))
+pred_test_0.75 <- predict(US_model_cleaned_0.75, newdata = as.data.frame(x_test_0.75))
+
+
+#Finding errors for 0.5
+MSE_train_0.5 <- mean((pred_train_0.5 - y_train_0.5)^2)
+MSE_test_0.5 <- mean((pred_test_0.5 - y_test_0.5)^2)
+
+#Finding errors for 0.75
+MSE_train_0.75 <- mean((pred_train_0.75 - y_train_0.75)^2)
+MSE_test_0.75 <- mean((pred_test_0.75 - y_test_0.75)^2)
+```
