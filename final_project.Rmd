@@ -81,36 +81,32 @@ unique(regressors_join[empty_rows,]$Category)
 n_distinct(regressors_join[empty_rows,]$Country.Name)
 unique(regressors_join[empty_rows,]$Country.Name)
 ```
+## Remove NA values
+```{r}
+us_data = regressors_join[regressors_join$Country.Name == "United States",]
+cleaned_us_data = us_data[complete.cases(us_data),]
+```
 
 ## Outlier Detection
 
 ```{r}
-agland = cleaned_data[cleaned_data$Category == "Agricultural land (% of land area)",]
-countries = agland$Country.Name
-num_countries = length(t(agland[,"Country.Name"]))
-outliers = data.frame(ncol = num_countries, nrows = 0)
-colnames(outliers) = agland[,"Country.Name"]
-sum = 0
-outliers_q = data.frame(ncol = num_countries, nrows = 0)
-colnames(outliers_q) = agland[,"Country.Name"]
-sum_q = 0
+us_target = cleaned_us_data[cleaned_us_data$Category == "SHARE.RE.IN.ELECTRICITY",]
+x = unlist(us_target, use.names = FALSE)
+X = as.numeric(x[3:28])
 
-for (country in countries){
-  x = unlist(agland[agland$Country.Name == country,], use.names = FALSE)
-  X = as.numeric(x[3:28])
-  ## IQR
-  quantiles = quantile(X, na.rm = TRUE)
-  first_q = quantiles["25%"]
-  third_q = quantiles["75%"]
-  diff_q = third_q - first_q
-  upper_bound_q = third_q + 1.5*diff_q
-  lower_bound_q = first_q - 1.5*diff_q
-  outliers_q[,country] = t(which(X < lower_bound_q | X > upper_bound_q))
-  sum_q = sum_q + length(outliers_q[,country])
- 
-}
+## IQR
+quantiles = quantile(X, na.rm = TRUE)
+first_q = quantiles["25%"]
+third_q = quantiles["75%"]
+diff_q = third_q - first_q
+upper_bound_q = third_q + 1.5*diff_q
+lower_bound_q = first_q - 1.5*diff_q
+outliers = t(which(X < lower_bound_q | X > upper_bound_q))
+sum = length(outliers)
+us_ts = ts(X, start = 1990, end = 2015)
+plot(us_ts)
 print(sum)
-print(sum_q)
+
 ```
 
 ### Creating Country Clusters
@@ -485,7 +481,7 @@ us2010_ts = ts(y_10[c(1:20),c(3)], start = 1990, end = 2010)
 us2011_ts = ts(y_10[c(1:21),c(3)], start = 1990, end = 2011)
 us2012_ts = ts(y_10[c(1:22),c(3)], start = 1990, end = 2012)
 us2013_ts = ts(y_10[c(1:23),c(3)], start = 1990, end = 2013)
-us2014_ts = ts(y_10[c(1:23),c(3)], start = 1990, end = 2014)
+us2014_ts = ts(y_10[c(1:24),c(3)], start = 1990, end = 2014)
 
 us_2011_ts = ts(y_10[c(21),c(3)], start = 2011)
 us_2012_ts = ts(y_10[c(22),c(3)], start = 2012)
@@ -601,8 +597,8 @@ heatmap(as.matrix(US_lm_cleaned_0.5))
 
 library(caTools)
 sample_0.5 <- sample.split(US_lm_cleaned_0.5$SHARE.RE.IN.ELECTRICITY, SplitRatio = 0.7)
-train_0.5  <- subset(US_lm_cleaned_0.5, sample == TRUE)
-test_0.5   <- subset(US_lm_cleaned_0.5, sample == FALSE)
+train_0.5  <- subset(US_lm_cleaned_0.5, sample = TRUE)
+test_0.5   <- subset(US_lm_cleaned_0.5, sample = FALSE)
 
 y_train_0.5 <- train_0.5$SHARE.RE.IN.ELECTRICITY
 x_train_0.5 <- cbind(train_0.5[,1], train_0.5[,2], train_0.5[,3], train_0.5[,4],train_0.5[,5], train_0.5[,6], train_0.5[,7], train_0.5[,8],train_0.5[,9], train_0.5[,10], train_0.5[,11], train_0.5[,12],train_0.5[,14])
@@ -624,8 +620,8 @@ cor_mat_cleaned_0.75 <- cor(US_lm_cleaned_0.75)
 heatmap(as.matrix(US_lm_cleaned_0.75))
 
 sample_0.75 <- sample.split(US_lm_cleaned_0.75$SHARE.RE.IN.ELECTRICITY, SplitRatio = 0.7)
-train_0.75  <- subset(US_lm_cleaned_0.75, sample == TRUE)
-test_0.75   <- subset(US_lm_cleaned_0.75, sample == FALSE)
+train_0.75  <- subset(US_lm_cleaned_0.75, sample = TRUE)
+test_0.75   <- subset(US_lm_cleaned_0.75, sample = FALSE)
 
 train_0.75 <- as.data.frame(train_0.75)
 
